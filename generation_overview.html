@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"name": "data-37b3d442c4f8a278dcdb169c035c27e4"}, "mark": {"type": "bar"}, "encoding": {"color": {"field": "Generation", "scale": {"scheme": "category10"}, "type": "nominal"}, "tooltip": [{"field": "Generation", "type": "nominal"}, {"field": "Members", "type": "quantitative"}, {"field": "TotalSponsoredBills", "type": "quantitative"}, {"field": "AvgBillsPerMember", "type": "quantitative"}], "x": {"field": "Generation", "sort": "-y", "type": "nominal"}, "y": {"field": "Members", "type": "quantitative"}}, "height": 300, "params": [{"name": "param_1", "select": {"type": "point"}}], "title": "Congressional Members by Generation", "width": 400, "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-37b3d442c4f8a278dcdb169c035c27e4": [{"Generation": "Gen X", "Members": 210, "TotalSponsoredBills": 26652, "AvgBillsPerMember": 126.91, "AvgBipartisanScore": 0.508}, {"Generation": "Millennial", "Members": 73, "TotalSponsoredBills": 3782, "AvgBillsPerMember": 51.81, "AvgBipartisanScore": 0.472}, {"Generation": "Baby Boomer", "Members": 229, "TotalSponsoredBills": 70313, "AvgBillsPerMember": 307.04, "AvgBipartisanScore": 0.487}, {"Generation": "Unknown", "Members": 1, "TotalSponsoredBills": 9, "AvgBillsPerMember": 9.0, "AvgBipartisanScore": 0.325}, {"Generation": "Gen Z", "Members": 1, "TotalSponsoredBills": 32, "AvgBillsPerMember": 32.0, "AvgBipartisanScore": 0.096}, {"Generation": "Silent Generation", "Members": 24, "TotalSponsoredBills": 13627, "AvgBillsPerMember": 567.79, "AvgBipartisanScore": 0.474}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>

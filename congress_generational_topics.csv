@@ -1,0 +1,55 @@
+Generation,Topic,Count,Proportion
+Gen X,Other,1279,0.339
+Gen X,Economy/Finance,410,0.109
+Gen X,Technology,613,0.163
+Gen X,Infrastructure,104,0.028
+Gen X,Defense/Security,353,0.094
+Gen X,Social Issues,207,0.055
+Gen X,Education,129,0.034
+Gen X,Climate/Environment,181,0.048
+Gen X,Healthcare,352,0.093
+Gen X,Agriculture,144,0.038
+Millennial,Economy/Finance,128,0.108
+Millennial,Other,386,0.326
+Millennial,Defense/Security,127,0.107
+Millennial,Social Issues,81,0.068
+Millennial,Infrastructure,26,0.022
+Millennial,Technology,193,0.163
+Millennial,Healthcare,90,0.076
+Millennial,Agriculture,49,0.041
+Millennial,Climate/Environment,71,0.06
+Millennial,Education,32,0.027
+Baby Boomer,Social Issues,203,0.045
+Baby Boomer,Other,1743,0.39
+Baby Boomer,Technology,745,0.167
+Baby Boomer,Defense/Security,260,0.058
+Baby Boomer,Education,182,0.041
+Baby Boomer,Climate/Environment,217,0.049
+Baby Boomer,Agriculture,107,0.024
+Baby Boomer,Economy/Finance,478,0.107
+Baby Boomer,Infrastructure,104,0.023
+Baby Boomer,Healthcare,430,0.096
+Unknown,Social Issues,1,0.111
+Unknown,Other,2,0.222
+Unknown,Infrastructure,1,0.111
+Unknown,Defense/Security,2,0.222
+Unknown,Economy/Finance,1,0.111
+Unknown,Healthcare,1,0.111
+Unknown,Technology,1,0.111
+Gen Z,Infrastructure,2,0.1
+Gen Z,Healthcare,1,0.05
+Gen Z,Technology,8,0.4
+Gen Z,Climate/Environment,4,0.2
+Gen Z,Economy/Finance,1,0.05
+Gen Z,Social Issues,3,0.15
+Gen Z,Other,1,0.05
+Silent Generation,Infrastructure,10,0.021
+Silent Generation,Other,191,0.398
+Silent Generation,Defense/Security,19,0.04
+Silent Generation,Technology,63,0.131
+Silent Generation,Social Issues,40,0.083
+Silent Generation,Economy/Finance,43,0.09
+Silent Generation,Healthcare,65,0.135
+Silent Generation,Climate/Environment,18,0.037
+Silent Generation,Agriculture,12,0.025
+Silent Generation,Education,19,0.04
