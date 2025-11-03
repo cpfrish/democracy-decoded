@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "layer": [{"mark": {"type": "line", "color": "gray"}, "encoding": {"color": {"value": "lightgray"}, "detail": {"field": "Generation", "type": "nominal"}, "tooltip": [{"field": "Generation", "type": "nominal"}, {"field": "Percentage_Type", "type": "nominal"}, {"field": "Percentage", "type": "quantitative"}], "x": {"axis": {"title": "Percentage (%)"}, "field": "Percentage", "scale": {"domain": [0, 45]}, "type": "quantitative"}, "y": {"field": "Generation", "title": null, "type": "nominal"}}, "name": "view_4"}, {"mark": {"type": "point", "filled": true, "size": 100}, "encoding": {"color": {"field": "Percentage_Type", "scale": {"scheme": "category10"}, "title": "Percentage of:", "type": "nominal"}, "tooltip": [{"field": "Generation", "type": "nominal"}, {"field": "Percentage_Type", "type": "nominal"}, {"field": "Percentage", "type": "quantitative"}], "x": {"axis": {"title": "Percentage (%)"}, "field": "Percentage", "scale": {"domain": [0, 45]}, "type": "quantitative"}, "y": {"field": "Generation", "title": null, "type": "nominal"}}}], "data": {"name": "data-9c8479ea29f2122e0b3b87f5e2cb49fe"}, "params": [{"name": "param_9", "select": {"type": "interval", "encodings": ["x", "y"]}, "bind": "scales", "views": ["view_4"]}], "title": "Generational Representation: Congress vs. US Population", "width": "container", "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-9c8479ea29f2122e0b3b87f5e2cb49fe": [{"Generation": "Baby Boomer", "Percentage_Type": "Congress", "Percentage": 42.64}, {"Generation": "Generation X", "Percentage_Type": "Congress", "Percentage": 39.11}, {"Generation": "Millennial", "Percentage_Type": "Congress", "Percentage": 13.59}, {"Generation": "Silent Generation", "Percentage_Type": "Congress", "Percentage": 4.47}, {"Generation": "Generation Z", "Percentage_Type": "Congress", "Percentage": 0.19}, {"Generation": "Baby Boomer", "Percentage_Type": "US Population", "Percentage": 19.67}, {"Generation": "Generation X", "Percentage_Type": "US Population", "Percentage": 19.27}, {"Generation": "Millennial", "Percentage_Type": "US Population", "Percentage": 21.81}, {"Generation": "Silent Generation", "Percentage_Type": "US Population", "Percentage": 4.48}, {"Generation": "Generation Z", "Percentage_Type": "US Population", "Percentage": 20.81}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>
