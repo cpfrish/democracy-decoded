@@ -331,19 +331,19 @@ def prepare_analysis_data(generation_data, detailed_analysis=True):
     member_df = pd.DataFrame(member_data)
     
     # Save all data
-    summary_df.to_csv("congress_generational_summary.csv", index=False)
+    summary_df.to_csv("../data/congress_generational_summary.csv", index=False)
     if detailed_analysis and not topic_df.empty:
-        topic_df.to_csv("congress_generational_topics.csv", index=False)
-    member_df.to_csv("congress_individual_members.csv", index=False)
+        topic_df.to_csv("../data/congress_generational_topics.csv", index=False)
+    member_df.to_csv("../data/congress_individual_members.csv", index=False)
     
     # Print summary statistics
     print("\n" + "="*70)
-    print("📊 GENERATIONAL ANALYSIS SUMMARY")
+    print("GENERATIONAL ANALYSIS SUMMARY")
     print("="*70)
     print(f"\nTotal Members Analyzed: {len(member_df)}")
     print(f"\nBreakdown by Generation:")
     print(summary_df.to_string(index=False))
-    print(f"\n📁 CSV Files Created:")
+    print(f"\nCSV Files Created:")
     print(f"  • congress_generational_summary.csv ({len(summary_df)} rows)")
     if detailed_analysis and not topic_df.empty:
         print(f"  • congress_generational_topics.csv ({len(topic_df)} rows)")
@@ -353,9 +353,9 @@ def prepare_analysis_data(generation_data, detailed_analysis=True):
     if detailed_analysis and not topic_df.empty:
         create_interactive_visualizations(summary_df, topic_df, member_df)
     else:
-        print("\n⚠️  Skipping detailed visualizations")
+        print("\nSkipping detailed visualizations")
     
-    print(f"\n✅ Success! {'Enhanced' if detailed_analysis else 'Basic'} generational analysis complete.")
+    print(f"\nSuccess! {'Enhanced' if detailed_analysis else 'Basic'} generational analysis complete.")
     print("="*70 + "\n")
     
     return summary_df, topic_df, member_df
@@ -505,12 +505,12 @@ def create_interactive_visualizations(summary_df, topic_df, member_df):
     )
     
     # Save visualizations
-    dashboard.save('congress_generational_dashboard.html')
-    gen_overview.save('generation_overview.html')
-    topic_heatmap.save('topic_heatmap.html')
-    member_activity.save('member_activity_scatter.html')
+    dashboard.save('../visualizations/congress_generational_dashboard.html')
+    gen_overview.save('../visualizations/generation_overview.html')
+    topic_heatmap.save('../visualizations/topic_heatmap.html')
+    member_activity.save('../visualizations/member_activity_scatter.html')
     
-    print("📊 Interactive visualizations created:")
+    print("Interactive visualizations created:")
     print("  - congress_generational_dashboard.html (main dashboard)")
     print("  - generation_overview.html")
     print("  - topic_heatmap.html") 
@@ -520,7 +520,7 @@ if __name__ == "__main__":
     # Run analysis - set detailed_analysis=True for full topic analysis (slower)
     # Set to False for basic analysis (faster - no bill details fetched)
     analyze_congress_generations(detailed_analysis=True)
-    print("\n✓ Analysis complete! Generated visualizations:")
+    print("\nAnalysis complete! Generated visualizations:")
     print("  - generation_overview.html")
     print("  - topic_heatmap.html") 
     print("  - member_activity_scatter.html")

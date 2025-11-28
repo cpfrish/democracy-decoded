@@ -199,8 +199,8 @@ All team members with access can view/edit env vars in dashboard.
 
 ## Next Steps
 
-1. ✅ Deploy API to Vercel
-2. ✅ Generate visualizations
-3. ✅ Push to GitHub Pages
-4. ✅ Embed in WordPress
-5. 🎉 Share your live site!
+1. Deploy API to Vercel
+2. Generate visualizations
+3. Push to GitHub Pages
+4. Embed in WordPress
+5. Share your live site!

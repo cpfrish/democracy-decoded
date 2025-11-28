@@ -35,7 +35,7 @@ class CongressPhotoFetcher:
             return self.members_cache
         
         try:
-            print("  📡 Fetching all congressional members from API...")
+            print("  Fetching all congressional members from API...")
             url = "https://api.congress.gov/v3/member"
             params = {"limit": 250, "offset": 0}
             
@@ -64,7 +64,7 @@ class CongressPhotoFetcher:
                 print(f"    Fetched {len(all_members)}/{total_count} members...")
             
             self.members_cache = all_members
-            print(f"  ✅ Cached {len(all_members)} congressional members")
+            print(f"  Cached {len(all_members)} congressional members")
             return all_members
             
         except Exception as e:
@@ -188,7 +188,7 @@ class CongressPhotoFetcher:
         
         # Cache negative result too to avoid re-checking
         self.photo_cache[bioguide_id] = None
-        print(f"    ⚠️  No photo found for {member_name} ({bioguide_id})")
+        print(f"    No photo found for {member_name} ({bioguide_id})")
         return None
     
     def check_image_exists(self, url):
@@ -229,18 +229,18 @@ class CongressPhotoFetcher:
         color = color_map.get(party, '888888')
         return f"https://via.placeholder.com/225x275/{color}/FFFFFF?text={initials}"
     
-    def enhance_congress_data_with_photos(self, csv_file_path="congress_individual_members.csv"):
+    def enhance_congress_data_with_photos(self, csv_file_path="../data/congress_individual_members.csv"):
         """
         Load congress data and enhance it with official photos.
         """
-        print("🔍 Loading congressional data...")
+        print("Loading congressional data...")
         try:
             df = pd.read_csv(csv_file_path)
         except FileNotFoundError:
-            print(f"❌ Error: {csv_file_path} not found. Run python_analyzer.py first.")
+            print(f"Error: {csv_file_path} not found. Run python_analyzer.py first.")
             return None
         
-        print(f"📊 Processing {len(df)} congressional members...")
+        print(f"Processing {len(df)} congressional members...")
         
         # Add photo columns
         df['BioguideID'] = None
@@ -275,7 +275,7 @@ class CongressPhotoFetcher:
                 if official_photo:
                     success_count += 1
                     if i < 10:  # Show details for first 10
-                        print(f"    ✅ Found photo for {member_name}")
+                        print(f"    Found photo for {member_name}")
             official_photos.append(official_photo)
             
             # Set final photo URL (official or fallback)
@@ -291,7 +291,7 @@ class CongressPhotoFetcher:
         df['PhotoURL'] = final_photos
         
         # Save enhanced data
-        output_file = "congress_members_with_photos.csv"
+        output_file = "../data/congress_members_with_photos.csv"
         df.to_csv(output_file, index=False)
         
         # Print summary
@@ -300,12 +300,12 @@ class CongressPhotoFetcher:
         total_members = len(df)
         
         print(f"\n{'='*60}")
-        print(f"✅ Photo enhancement complete!")
+        print(f"Photo enhancement complete!")
         print(f"{'='*60}")
         print(f"� Bioguide IDs found: {bioguide_found}/{total_members} ({bioguide_found/total_members*100:.1f}%)")
-        print(f"📸 Official photos found: {official_photos_count}/{total_members} ({official_photos_count/total_members*100:.1f}%)")
-        print(f"🎨 Fallback photos created: {total_members - official_photos_count}")
-        print(f"💾 Enhanced data saved to: {output_file}")
+        print(f"Official photos found: {official_photos_count}/{total_members} ({official_photos_count/total_members*100:.1f}%)")
+        print(f"Fallback photos created: {total_members - official_photos_count}")
+        print(f"Enhanced data saved to: {output_file}")
         print(f"{'='*60}")
         
         return df
@@ -313,7 +313,7 @@ class CongressPhotoFetcher:
     def create_enhanced_visualization(self, df_with_photos):
         """Create enhanced Altair visualization with official photos."""
         
-        print("🎨 Creating enhanced visualization...")
+        print("Creating enhanced visualization...")
         
         # Filter out unknown generations for cleaner viz
         df_clean = df_with_photos[df_with_photos['Generation'] != 'Unknown'].copy()
@@ -375,9 +375,9 @@ class CongressPhotoFetcher:
         )
         
         # Save the visualization
-        enhanced_chart.save('congress_members_with_photos.html')
+        enhanced_chart.save('../visualizations/congress_members_with_photos.html')
         
-        print(f"📊 Enhanced visualization saved to: congress_members_with_photos.html")
+        print(f"Enhanced visualization saved to: ../visualizations/congress_members_with_photos.html")
         print(f"💡 Hover over any point to see the representative's official photo!")
         
         return enhanced_chart
@@ -385,7 +385,7 @@ class CongressPhotoFetcher:
 def main():
     """Main function to run the photo enhancement process."""
     
-    print("🏛️ Congressional Photo Fetcher")
+    print("Congressional Photo Fetcher")
     print("=" * 50)
     
     try:
@@ -399,16 +399,16 @@ def main():
             # Create enhanced visualization
             chart = fetcher.create_enhanced_visualization(df_enhanced)
             
-            print("\n🎉 Success! Files created:")
-            print("  📄 congress_members_with_photos.csv - Enhanced data with photo URLs")
-            print("  📊 congress_members_with_photos.html - Interactive visualization")
+            print("\nSuccess! Files created:")
+            print("  congress_members_with_photos.csv - Enhanced data with photo URLs")
+            print("  congress_members_with_photos.html - Interactive visualization")
             print("\nOpen the HTML file in your browser to explore the interactive chart with photos!")
             
         else:
-            print("\n❌ Failed to enhance data. Make sure congress_individual_members.csv exists.")
+            print("\nFailed to enhance data. Make sure congress_individual_members.csv exists.")
             
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         print("Make sure your CONGRESS_API_KEY environment variable is set.")
 
 if __name__ == "__main__":

@@ -33,8 +33,9 @@ wheels/
 .env
 .env.local
 
-# CSV files (legacy - no longer used in production)
-*.csv
+# Data files (generated locally, not used in production)
+data/*.csv
+!data/.gitkeep
 
 # Vercel
 .vercel

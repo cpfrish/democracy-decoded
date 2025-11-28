@@ -226,10 +226,10 @@ def generate_all_charts(api_base_url, output_dir='visualizations'):
     for name, chart in charts.items():
         filepath = os.path.join(output_dir, f'{name}.html')
         chart.save(filepath)
-        print(f"✅ Saved {filepath}")
+        print(f"Saved {filepath}")
     
-    print(f"\n🎉 All charts generated in {output_dir}/")
-    print(f"📊 These charts load live data from: {api_base_url}")
+    print(f"\nAll charts generated in {output_dir}/")
+    print(f"These charts load live data from: {api_base_url}")
     print(f"💡 Embed in WordPress using iframe:")
     print(f'   <iframe src="https://your-github-pages.io/{output_dir}/{name}.html" width="800" height="600"></iframe>')
 
@@ -238,7 +238,7 @@ if __name__ == '__main__':
     # Example usage - update with your actual Vercel URL after deployment
     API_BASE_URL = "https://your-app-name.vercel.app"
     
-    print("⚠️  Update API_BASE_URL with your actual Vercel deployment URL")
+    print("Update API_BASE_URL with your actual Vercel deployment URL")
     print(f"Current URL: {API_BASE_URL}\n")
     
     # Uncomment after deploying to Vercel:
