@@ -1,374 +1,148 @@
-# Congressional Generational Analysis - Serverless Architecture
+# Congressional Generational Analysis
 
-This project analyzes U.S. Congressional members using a serverless API architecture deployed on Vercel, with visualizations hosted on GitHub Pages and embedded in WordPress.
-
-## Architecture Overview
-
-```
-Congress.gov API → Vercel Serverless Functions (Python)
-                 ↓
-               JSON API Endpoints (/api/congress-data, /api/member-photos)
-                 ↓
-               Altair Charts (load from API URLs)
-                 ↓
-               GitHub Pages (static HTML hosting)
-                 ↓
-               WordPress (iframe embeds)
-```
+Interactive visualizations of the 119th US Congress, analyzing legislative activity by generation, party, and geography.
 
 ## Quick Start
 
-### 1. Deploy to Vercel
+### Prerequisites
+- Python 3.8+
+- Congress.gov API key ([get one here](https://api.congress.gov/sign-up/))
 
+### Setup
+
+1. **Clone the repository**
 ```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Login to Vercel
-vercel login
-
-# Deploy (from project root)
-vercel
-
-# Add your API key as environment variable
-vercel env add CONGRESS_API_KEY
+git clone https://github.com/UC-Berkeley-I-School/final-project-209-congress.git
+cd final-project-209-congress
 ```
 
-After deployment, you'll get a URL like: `https://your-project.vercel.app`
-
-### 2. Run Local Analysis (Optional)
-
+2. **Install dependencies**
 ```bash
-# Set your API key
-export CONGRESS_API_KEY="your_key_here"
-
-# Generate data files (from scripts/ directory)
-cd scripts
-python python_analyzer.py
-
-# Add photos to member data
-python congress_photo_fetcher.py
-
-# Go back to project root
-cd ..
+pip install -r requirements.txt
 ```
 
-This creates CSV files in `data/` and HTML visualizations in `visualizations/`.
-
-### 3. Generate API-Powered Visualizations
-
+3. **Set your API key**
 ```bash
-# Update generate_api_charts.py with your Vercel URL
-# Then run from scripts/ directory:
-cd scripts
-python generate_api_charts.py
+export CONGRESS_API_KEY='your_api_key_here'
 ```
 
-This creates HTML files in `visualizations/` that load from your API.
+### Generate Everything
 
-### 4. Push to GitHub Pages
-
+Run all three steps at once:
 ```bash
-# Commit visualizations
-git add visualizations/*.html
-git commit -m "Add API-powered visualizations"
-
-# Push to gh-pages branch (or configure docs/ folder in Settings)
-git push origin main
+python run_all.py
 ```
 
-### 5. Embed in WordPress
+Or run steps individually:
 
-```html
-<iframe 
-  src="https://your-username.github.io/final-project-209-congress/visualizations/generation_overview.html" 
-  width="800" 
-  height="600" 
-  frameborder="0">
-</iframe>
+**Step 1: Fetch member data (~2 minutes)**
+```bash
+python 1_fetch_member_data.py
 ```
+
+**Step 2: Fetch location data (~2 minutes)**
+```bash
+python 2_fetch_location_data.py
+```
+
+**Step 3: Create visualizations (instant)**
+```bash
+python 3_create_visualizations.py
+```
+
+## What Gets Created
+
+### Data Files (in `data/`)
+- `congress_individual_members.csv` - All members with basic info
+- `congress_generational_summary.csv` - Summary by generation
+- `congress_members_with_photos.csv` - Members with photo URLs
+- `congress_members_all_chambers.csv` - All members with state/district/chamber
+- `congress_members_districts.csv` - House members only
+
+### Visualizations (in `visualizations/`)
+- `member_activity_scatter_interactive.html` - Interactive scatter plot
+  - Bills sponsored vs birth year
+  - Photo thumbnails on hover
+  - Toggle between generation/party colors
+  
+- `congress_map_dual_chamber.html` - Interactive choropleth map
+  - Toggle between House and Senate views
+  - House: 435 districts colored by party
+  - Senate: 50 states showing both senators
+  - Photo thumbnails on hover
 
 ## Project Structure
 
 ```
-congress_project/
-├── api/                          # Vercel serverless functions
-│   ├── congress_data.py          # Main congressional data endpoint
-│   ├── member_photos.py          # Member data with official photos
-│   └── test.py                   # API testing utilities
-│
-├── scripts/                      # Data processing and utilities
-│   ├── python_analyzer.py        # Congress data analysis & processing
-│   ├── congress_api_client.py    # Congress.gov API wrapper
-│   ├── congress_photo_api.py     # Photo fetching utilities
-│   ├── congress_photo_fetcher.py # Enhanced photo data processing
-│   └── generate_api_charts.py    # Generate API-powered visualizations
-│
-├── notebooks/                    # Jupyter notebooks for analysis
-│   ├── congress_eda.ipynb        # Exploratory data analysis
-│   └── congress_graphs.ipynb     # Chart generation and refinement
-│
-├── data/                         # Generated CSV data files
-│   ├── congress_generational_summary.csv
-│   ├── congress_generational_topics.csv
-│   ├── congress_individual_members.csv
-│   └── congress_members_with_photos.csv
-│
-├── visualizations/               # Generated HTML visualizations
-│   ├── congress_generational_dashboard.html
-│   ├── generation_overview.html
-│   ├── topic_heatmap.html
-│   ├── member_activity_scatter.html
-│   └── [other visualization files]
-│
-├── vercel.json                   # Vercel deployment configuration
-├── requirements.txt              # Python dependencies
-├── .gitignore                    # Git ignore patterns
-├── DEPLOYMENT.md                 # Deployment instructions
-└── README.md                     # This file
+.
+├── 1_fetch_member_data.py         # Step 1: Get member data
+├── 2_fetch_location_data.py       # Step 2: Get state/district/chamber
+├── 3_create_visualizations.py     # Step 3: Generate HTML visualizations
+├── run_all.py                     # Run all steps at once
+├── requirements.txt               # Python dependencies
+├── data/                          # Generated CSV files (git-ignored)
+├── visualizations/                # Generated HTML files
+├── scripts/                       # Helper modules
+│   ├── congress_api_client.py
+│   ├── congress_photo_api.py
+│   └── congress_photo_fetcher.py
+└── notebooks/                     # Jupyter notebooks for exploration
+    ├── congress_eda.ipynb
+    └── congress_graphs.ipynb
 ```
 
-### Directory Descriptions
+## Key Features
 
-**`/api/`** - Vercel serverless functions (production endpoints)
+✅ **Photo Tooltips** - Hover over any data point or map region to see representative photos and details  
+✅ **Interactive Maps** - Toggle between House districts and Senate states  
+✅ **Party Color Coding** - Democrat (blue), Republican (red), Independent (purple)  
+✅ **Generation Analysis** - Track legislative activity across generations  
+✅ **Real-time API Data** - Fresh data from Congress.gov  
 
-- `congress_data.py` - Returns member list, generational summary, optional topic analysis
-- `member_photos.py` - Returns all members with bioguide IDs and photo URLs
-- Cache: 1 hour (congress data), 6 hours (photos)
+## Technologies Used
 
-**`/scripts/`** - Data processing and analysis scripts
+- **Data**: Congress.gov API, Pandas
+- **Visualizations**: D3.js, TopoJSON
+- **Maps**: US Census Bureau cartographic boundaries
 
-- Run these locally to generate/update data files
-- Not deployed to production (serverless functions use API directly)
+## API Rate Limits
 
-**`/notebooks/`** - Interactive analysis and visualization development
+The Congress.gov API has rate limits. The scripts include automatic delays (0.25s between requests) to comply with these limits. Full data fetching takes approximately 4-5 minutes total.
 
-- Use for exploratory data analysis and prototyping visualizations
-- All file paths use relative references (`../data/`, `../visualizations/`)
+## Caching
 
-**`/data/`** - CSV data files (git-ignored in production)
+Data files are cached in the `data/` directory. To refresh with new data, simply delete the CSV files and re-run the scripts.
 
-- Generated by scripts for local analysis
-- Not used by production API (fetches live data)
+## Development
 
-**`/visualizations/`** - Static HTML files
-
-- Can be hosted on GitHub Pages
-- Load data dynamically from Vercel API endpoints
-
-## Environment Variables
-
-**Required:**
-
-- `CONGRESS_API_KEY` - Get from https://api.congress.gov/sign-up/
-
-**Setup in Vercel:**
-
+### Notebooks
+Jupyter notebooks for data exploration are in the `notebooks/` directory:
 ```bash
-vercel env add CONGRESS_API_KEY production
+jupyter notebook notebooks/congress_eda.ipynb
 ```
 
-## API Endpoints Usage
+### Scripts
+Helper modules are in `scripts/`:
+- `congress_api_client.py` - API interaction functions
+- `congress_photo_fetcher.py` - Photo URL fetching
+- `congress_photo_api.py` - Photo-specific API calls
 
-### Get Congressional Data (Basic)
-```
-GET https://your-app.vercel.app/api/congress-data
-```
+## Contributing
 
-Response:
+This project was developed as part of UC Berkeley's I School Data Science program.
 
-```json
-{
-  "data": {
-    "members": [...],
-    "summary": [
-      {
-        "generation": "Baby Boomer",
-        "member_count": 245,
-        "total_bills": 12450,
-        "avg_bills_per_member": 50.82
-      }
-    ]
-  },
-  "metadata": {
-    "timestamp": "2025-11-27T10:30:00Z",
-    "cache_ttl": 3600
-  }
-}
-```
+## License
 
-### Get Congressional Data (With Topics)
+Data sourced from Congress.gov (public domain). Visualizations and code are available for educational use.
 
-```
-GET https://your-app.vercel.app/api/congress-data?detailed=true
-```
+## Credits
 
-Adds `topics` array with bill categorizations (slower, use sparingly).
+- **Data Source**: Congress.gov API
+- **Geographic Data**: US Census Bureau via us-atlas
+- **Official Photos**: bioguide.congress.gov
 
-### Get Member Photos
+---
 
-```
-GET https://your-app.vercel.app/api/member-photos
-```
-
-Response includes `photo_url` (official or fallback) for each member.
-
-## Visualization Patterns
-
-### Loading Data from API in Altair
-
-```python
-import altair as alt
-
-# Load from your API
-data = alt.Data(
-    url='https://your-app.vercel.app/api/congress-data',
-    format=alt.DataFormat(property='data.summary', type='json')
-)
-
-chart = alt.Chart(data).mark_bar().encode(
-    x='generation:N',
-    y='member_count:Q'
-)
-```
-
-### Party Color Standards
-
-- Democrat: `#2E86AB` (blue)
-- Republican: `#C23B22` (red)
-- Independent: `#9966CC` (purple)
-
-### Generation Classification (Birth Years)
-
-- Silent Generation: 1928-1945
-- Baby Boomer: 1946-1964
-- Gen X: 1965-1980
-- Millennial: 1981-1996
-- Gen Z: 1997+
-
-## Performance Optimization
-
-### API Caching Strategy
-
-- **Congress data**: 1 hour cache (members change infrequently)
-- **Photos**: 6 hour cache (photos almost never change)
-- **Browser cache**: Respects `Cache-Control` headers
-
-### Rate Limiting
-
-- Built-in `time.sleep()` delays in API client:
-  - 0.25s between member detail requests
-  - 0.05s during photo fetching
-- Vercel function timeout: 10 seconds (configurable)
-
-### Photo URL Priority
-
-1. GitHub unitedstates/images (225x275) - fastest
-2. theunitedstates.io mirror
-3. GitHub original size
-4. Bioguide.gov subdirectory
-5. Bioguide.gov direct
-6. Fallback: placeholder with initials
-
-## Development Workflow
-
-### Local Testing
-
-```bash
-# Install Vercel CLI dev server
-vercel dev
-
-# Your API will be at:
-# http://localhost:3000/api/congress-data
-# http://localhost:3000/api/member-photos
-```
-
-### Testing API Locally
-
-```bash
-# Set environment variable
-export CONGRESS_API_KEY="your_key_here"
-
-# Test the core functions
-python -c "from congress_api_client import fetch_congress_members_json; print(fetch_congress_members_json())"
-```
-
-### Adding New Bill Topics
-
-Edit `categorize_bill_topic()` in `congress_api_client.py`:
-
-```python
-topic_keywords = {
-    'YourNewTopic': ['keyword1', 'keyword2', 'keyword3'],
-    # ... existing topics
-}
-```
-
-## Common Issues
-
-1. **CORS errors in WordPress iframe**
-   - APIs include `Access-Control-Allow-Origin: *` headers
-   - If issues persist, check WordPress CSP settings
-
-2. **Slow API responses**
-   - Use `?detailed=false` (default) for faster responses
-   - Consider increasing Vercel function memory/timeout
-
-3. **API key not found**
-   - Verify in Vercel dashboard: Settings → Environment Variables
-   - Redeploy after adding env vars: `vercel --prod`
-
-4. **Charts not updating**
-   - Check browser cache (Ctrl+Shift+R to hard refresh)
-   - Verify API returns fresh `timestamp` in metadata
-
-## What NOT to Do
-
-- Don't commit CSV files to git anymore
-- Don't run `python_analyzer.py` manually for production
-- Don't use `detailed=true` in WordPress embeds (too slow)
-- Don't store API keys in code (use Vercel env vars)
-
-## Team Collaboration
-
-### Branch Strategy
-
-- `main` - production code, auto-deploys to Vercel
-- `dev_*` - feature branches for team members
-- `gh-pages` - static HTML visualizations (auto-generated)
-
-### Making Changes
-
-1. Create feature branch: `git checkout -b dev_yourname`
-2. Test locally: `vercel dev`
-3. Push to GitHub: `git push origin dev_yourname`
-4. Merge to main after review
-5. Vercel auto-deploys on main branch push
-
-### Updating Visualizations
-
-1. Update `generate_api_charts.py`
-2. Run: `python generate_api_charts.py`
-3. Commit HTML files
-4. Push to trigger GitHub Pages update
-
-## Key Dependencies
-
-- **requests** - HTTP client for Congress.gov API
-- **pandas** - Data manipulation (minimal use now)
-- **altair** - Declarative visualizations
-- **numpy** - Numerical operations
-
-## External Services
-
-- **Congress.gov API** - Primary data source
-- **GitHub unitedstates/images** - Official photos
-- **Vercel** - Serverless function hosting
-- **GitHub Pages** - Static HTML hosting
-- **WordPress** - Final iframe presentation
-
-## Further Reading
-
-- [Vercel Python Runtime Docs](https://vercel.com/docs/functions/runtimes/python)
-- [Altair Data from URLs](https://altair-viz.github.io/user_guide/data.html#data-from-url)
-- [Congress.gov API Docs](https://api.congress.gov/)
+**Questions?** Check the documentation files:
+- `CHOROPLETH_MAP.md` - Details on the map visualizations
+- `GITHUB_PAGES_DEPLOY.md` - Deployment instructions

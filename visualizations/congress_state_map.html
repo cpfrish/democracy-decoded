@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"url": "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json", "format": {"feature": "states", "type": "topojson"}}, "mark": {"type": "geoshape", "stroke": "white", "strokeWidth": 1}, "encoding": {"color": {"field": "party_color", "legend": {"title": "Majority Party"}, "scale": null, "type": "nominal"}, "tooltip": [{"field": "State", "type": "nominal"}, {"field": "Party", "title": "Majority Party", "type": "nominal"}, {"field": "count", "title": "Members", "type": "quantitative"}]}, "height": 600, "projection": {"type": "albersUsa"}, "title": "Congressional Representation by State (Majority Party)", "transform": [{"lookup": "id", "from": {"data": {"name": "data-5a73779ad391fd43aad438dfa1045ce3"}, "key": "State", "fields": ["Party", "party_color", "count"]}}], "width": 900, "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-5a73779ad391fd43aad438dfa1045ce3": [{"State": "Alabama", "Party": "R", "count": 5, "party_color": "#C23B22"}, {"State": "Arizona", "Party": "R", "count": 6, "party_color": "#C23B22"}, {"State": "Arkansas", "Party": "R", "count": 4, "party_color": "#C23B22"}, {"State": "California", "Party": "D", "count": 43, "party_color": "#2E86AB"}, {"State": "Colorado", "Party": "D", "count": 4, "party_color": "#2E86AB"}, {"State": "Connecticut", "Party": "D", "count": 5, "party_color": "#2E86AB"}, {"State": "Florida", "Party": "R", "count": 20, "party_color": "#C23B22"}, {"State": "Georgia", "Party": "R", "count": 9, "party_color": "#C23B22"}, {"State": "Hawaii", "Party": "D", "count": 2, "party_color": "#2E86AB"}, {"State": "Idaho", "Party": "R", "count": 2, "party_color": "#C23B22"}, {"State": "Illinois", "Party": "D", "count": 14, "party_color": "#2E86AB"}, {"State": "Indiana", "Party": "R", "count": 7, "party_color": "#C23B22"}, {"State": "Iowa", "Party": "R", "count": 4, "party_color": "#C23B22"}, {"State": "Kansas", "Party": "R", "count": 3, "party_color": "#C23B22"}, {"State": "Kentucky", "Party": "R", "count": 5, "party_color": "#C23B22"}, {"State": "Louisiana", "Party": "R", "count": 4, "party_color": "#C23B22"}, {"State": "Maine", "Party": "D", "count": 2, "party_color": "#2E86AB"}, {"State": "Maryland", "Party": "D", "count": 7, "party_color": "#2E86AB"}, {"State": "Massachusetts", "Party": "D", "count": 9, "party_color": "#2E86AB"}, {"State": "Michigan", "Party": "R", "count": 7, "party_color": "#C23B22"}, {"State": "Minnesota", "Party": "D", "count": 4, "party_color": "#2E86AB"}, {"State": "Mississippi", "Party": "R", "count": 3, "party_color": "#C23B22"}, {"State": "Missouri", "Party": "R", "count": 6, "party_color": "#C23B22"}, {"State": "Montana", "Party": "R", "count": 2, "party_color": "#C23B22"}, {"State": "Nebraska", "Party": "R", "count": 3, "party_color": "#C23B22"}, {"State": "Nevada", "Party": "D", "count": 3, "party_color": "#2E86AB"}, {"State": "New Hampshire", "Party": "D", "count": 2, "party_color": "#2E86AB"}, {"State": "New Jersey", "Party": "D", "count": 10, "party_color": "#2E86AB"}, {"State": "New Mexico", "Party": "D", "count": 3, "party_color": "#2E86AB"}, {"State": "New York", "Party": "D", "count": 19, "party_color": "#2E86AB"}, {"State": "North Carolina", "Party": "R", "count": 10, "party_color": "#C23B22"}, {"State": "Ohio", "Party": "R", "count": 10, "party_color": "#C23B22"}, {"State": "Oklahoma", "Party": "R", "count": 5, "party_color": "#C23B22"}, {"State": "Oregon", "Party": "D", "count": 5, "party_color": "#2E86AB"}, {"State": "Pennsylvania", "Party": "R", "count": 10, "party_color": "#C23B22"}, {"State": "Rhode Island", "Party": "D", "count": 2, "party_color": "#2E86AB"}, {"State": "South Carolina", "Party": "R", "count": 6, "party_color": "#C23B22"}, {"State": "Tennessee", "Party": "R", "count": 7, "party_color": "#C23B22"}, {"State": "Texas", "Party": "R", "count": 25, "party_color": "#C23B22"}, {"State": "Utah", "Party": "R", "count": 4, "party_color": "#C23B22"}, {"State": "Virginia", "Party": "D", "count": 6, "party_color": "#2E86AB"}, {"State": "Washington", "Party": "D", "count": 8, "party_color": "#2E86AB"}, {"State": "West Virginia", "Party": "R", "count": 2, "party_color": "#C23B22"}, {"State": "Wisconsin", "Party": "R", "count": 6, "party_color": "#C23B22"}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>
