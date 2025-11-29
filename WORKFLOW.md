@@ -1,6 +1,7 @@
 # WORKFLOW.md - Simple 3-Step Process
 
 ## Overview
+
 This repository has been simplified to a clean 3-step workflow for generating congressional data visualizations.
 
 ## Structure

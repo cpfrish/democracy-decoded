@@ -5,6 +5,7 @@ Interactive visualizations of the 119th US Congress, analyzing legislative activ
 ## Quick Start
 
 ### Prerequisites
+
 - Python 3.8+
 - Congress.gov API key ([get one here](https://api.congress.gov/sign-up/))
 
@@ -12,12 +13,15 @@ Interactive visualizations of the 119th US Congress, analyzing legislative activ
 
 1. **Clone the repository**
 ```bash
+
 git clone https://github.com/UC-Berkeley-I-School/final-project-209-congress.git
 cd final-project-209-congress
 ```
 
 2. **Install dependencies**
+
 ```bash
+
 pip install -r requirements.txt
 ```
 
@@ -53,6 +57,7 @@ python 3_create_visualizations.py
 ## What Gets Created
 
 ### Data Files (in `data/`)
+
 - `congress_individual_members.csv` - All members with basic info
 - `congress_generational_summary.csv` - Summary by generation
 - `congress_members_with_photos.csv` - Members with photo URLs
@@ -60,6 +65,7 @@ python 3_create_visualizations.py
 - `congress_members_districts.csv` - House members only
 
 ### Visualizations (in `visualizations/`)
+
 - `member_activity_scatter_interactive.html` - Interactive scatter plot
   - Bills sponsored vs birth year
   - Photo thumbnails on hover
@@ -116,12 +122,14 @@ Data files are cached in the `data/` directory. To refresh with new data, simply
 ## Development
 
 ### Notebooks
+
 Jupyter notebooks for data exploration are in the `notebooks/` directory:
 ```bash
 jupyter notebook notebooks/congress_eda.ipynb
 ```
 
 ### Scripts
+
 Helper modules are in `scripts/`:
 - `congress_api_client.py` - API interaction functions
 - `congress_photo_fetcher.py` - Photo URL fetching
@@ -144,5 +152,6 @@ Data sourced from Congress.gov (public domain). Visualizations and code are avai
 ---
 
 **Questions?** Check the documentation files:
+
 - `CHOROPLETH_MAP.md` - Details on the map visualizations
 - `GITHUB_PAGES_DEPLOY.md` - Deployment instructions

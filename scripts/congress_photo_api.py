@@ -1,6 +1,5 @@
 """
 Congress Photo API Client - Refactored for JSON output
-Extracts photo fetching logic for serverless use
 """
 
 import requests

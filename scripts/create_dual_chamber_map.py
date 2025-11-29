@@ -66,7 +66,7 @@ def fetch_all_congress_members():
                     'BioguideID': bioguide_id,
                     'PhotoURL': row['PhotoURL'],
                     'State': state,
-                    'District': int(district) if district else None,
+                    'District': int(district) if district else 0,  # At-large districts are 0
                     'Chamber': 'House' if chamber and 'house' in chamber.lower() else 'Senate',
                     'Generation': row['Generation']
                 }
@@ -92,14 +92,19 @@ def create_dual_chamber_map():
     """
     
     # Try to load from cache first
+    # Determine if running from scripts/ or root directory
+    data_path = 'data/congress_members_all_chambers.csv'
+    if not os.path.exists(data_path):
+        data_path = '../data/congress_members_all_chambers.csv'
+    
     try:
-        df = pd.read_csv('../data/congress_members_all_chambers.csv')
+        df = pd.read_csv(data_path)
         print("Loaded chamber data from cache")
     except FileNotFoundError:
         print("No cached data found. Fetching from Congress API...")
         print("This will take several minutes due to API rate limits...")
         df = fetch_all_congress_members()
-        df.to_csv('../data/congress_members_all_chambers.csv', index=False)
+        df.to_csv(data_path, index=False)
         print(f"Saved data for {len(df)} members")
     
     # Separate House and Senate members
@@ -349,10 +354,10 @@ def create_dual_chamber_map():
         
         <div class="controls">
             <div class="toggle-container">
-                <button class="toggle-btn active" id="btn-house" onclick="switchChamber('house')">
+                <button class="toggle-btn active" id="btn-house">
                     House of Representatives
                 </button>
-                <button class="toggle-btn" id="btn-senate" onclick="switchChamber('senate')">
+                <button class="toggle-btn" id="btn-senate">
                     Senate
                 </button>
             </div>
@@ -407,11 +412,29 @@ def create_dual_chamber_map():
             'I': 'Independent'
         }};
         
+        // State FIPS codes for GEOID lookup
+        const stateFIPS = {{
+            'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06',
+            'CO': '08', 'CT': '09', 'DE': '10', 'FL': '12', 'GA': '13',
+            'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 'IA': '19',
+            'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 'MD': '24',
+            'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 'MO': '29',
+            'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 'NJ': '34',
+            'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 'OH': '39',
+            'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 'SC': '45',
+            'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 'VT': '50',
+            'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 'WY': '56'
+        }};
+        
         // Create lookups
         const houseLookup = {{}};
         houseMembers.forEach(member => {{
-            const districtId = member.State + String(member.District).padStart(2, '0');
-            houseLookup[districtId] = member;
+            // GEOID format: StateFIPS + District (2 digits)
+            const fips = stateFIPS[member.State];
+            if (fips) {{
+                const districtId = fips + String(member.District || 0).padStart(2, '0');
+                houseLookup[districtId] = member;
+            }}
         }});
         
         const senateLookup = {{}};
@@ -684,6 +707,15 @@ def create_dual_chamber_map():
             }}
         }}
         
+        // Add event listeners for chamber toggle buttons
+        document.getElementById('btn-house').addEventListener('click', function() {{
+            switchChamber('house');
+        }});
+        
+        document.getElementById('btn-senate').addEventListener('click', function() {{
+            switchChamber('senate');
+        }});
+        
         // Initial load
         drawHouseMap();
     </script>
@@ -692,7 +724,11 @@ def create_dual_chamber_map():
     """
     
     # Save HTML file
-    output_path = '../visualizations/congress_map_dual_chamber.html'
+    # Determine output path based on current directory
+    output_path = 'visualizations/congress_map_dual_chamber.html'
+    if not os.path.exists('visualizations'):
+        output_path = '../visualizations/congress_map_dual_chamber.html'
+    
     with open(output_path, 'w') as f:
         f.write(html_template)
     

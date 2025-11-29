@@ -26,7 +26,7 @@ def get_generation(birth_year):
     elif year >= 1997:
         return "Gen Z"
     else:
-        return "Pre-Silent"
+        return "Unknown"
 
 
 def fetch_sponsored_bills_count(member_id, headers):
