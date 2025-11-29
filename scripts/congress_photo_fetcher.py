@@ -310,6 +310,72 @@ class CongressPhotoFetcher:
         
         return df
     
+    def process_dataframe(self, df):
+        """
+        Process a DataFrame and add photo URLs.
+        Similar to enhance_congress_data_with_photos but works directly with DataFrames.
+        Handles both lowercase_underscore and CapitalCase column names.
+        """
+        print(f"Processing {len(df)} congressional members...")
+        
+        # Add photo columns
+        df = df.copy()  # Don't modify original
+        
+        # Initialize lists to store results
+        bioguide_ids = []
+        final_photos = []
+        
+        # Process each member
+        success_count = 0
+        for i in range(len(df)):
+            row = df.iloc[i]
+            
+            # Handle both naming conventions
+            member_name = row.get('Name') or row.get('name', 'Unknown')
+            party = row.get('Party') or row.get('party', 'Unknown')
+            birth_year = row.get('BirthYear') or row.get('birth_year')
+            
+            # Print progress every 50 members
+            if (i + 1) % 50 == 0:
+                print(f"  Progress: {i+1}/{len(df)} members...")
+            
+            # Get bioguide ID
+            bioguide_id = self.get_bioguide_id(member_name, birth_year, party)
+            bioguide_ids.append(bioguide_id)
+            
+            # Get official photo
+            official_photo = None
+            if bioguide_id:
+                official_photo = self.get_official_photo_url(bioguide_id, member_name)
+                if official_photo:
+                    success_count += 1
+            
+            # Set final photo URL (official or fallback)
+            final_photo = official_photo or self.create_fallback_photo_url(member_name, party)
+            final_photos.append(final_photo)
+            
+            # Rate limiting
+            time.sleep(0.05)
+        
+        # Add results to dataframe
+        df['BioguideID'] = bioguide_ids
+        df['PhotoURL'] = final_photos
+        
+        # Print summary
+        official_photos_count = sum(1 for p in final_photos if p and 'placeholder' not in p)
+        bioguide_found = sum(1 for b in bioguide_ids if b)
+        total_members = len(df)
+        
+        print(f"\n{'='*60}")
+        print(f"Photo enhancement complete!")
+        print(f"{'='*60}")
+        print(f"✓ Bioguide IDs found: {bioguide_found}/{total_members} ({bioguide_found/total_members*100:.1f}%)")
+        print(f"✓ Official photos found: {official_photos_count}/{total_members} ({official_photos_count/total_members*100:.1f}%)")
+        print(f"✓ Fallback photos created: {total_members - official_photos_count}")
+        print(f"{'='*60}")
+        
+        return df
+    
     def create_enhanced_visualization(self, df_with_photos):
         """Create enhanced Altair visualization with official photos."""
         

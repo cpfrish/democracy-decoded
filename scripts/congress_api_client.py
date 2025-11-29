@@ -35,7 +35,7 @@ def fetch_sponsored_bills_count(member_id, headers):
     url = f"https://api.congress.gov/v3/{endpoint}"
     params = {"limit": 1}
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         return data.get("pagination", {}).get("count", 0)
@@ -49,7 +49,7 @@ def fetch_member_details(member_id, headers):
     url = f"https://api.congress.gov/v3/{endpoint}"
     
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         member_data = data.get("member", {})
@@ -141,7 +141,7 @@ def fetch_detailed_bills(member_id, headers, limit=20):
     bills = []
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -187,6 +187,7 @@ def fetch_congress_members_json(detailed_analysis=False):
     url = "https://api.congress.gov/v3/member"
     
     # Fetch all current members
+    print("Fetching member list from Congress.gov...")
     while url:
         params = {"limit": 250, "currentMember": "true"}
         try:
@@ -198,16 +199,37 @@ def fetch_congress_members_json(detailed_analysis=False):
         except requests.exceptions.RequestException:
             break
     
+    print(f"Found {len(all_members_raw)} current members")
+    
     # Process members by generation
     generation_data = {}
     members_list = []
+    
+    print(f"\nFetching details for {len(all_members_raw)} members...")
+    print("(This takes ~3-4 minutes due to API rate limits)")
     
     for i, member in enumerate(all_members_raw):
         member_id = member.get("bioguideId")
         member_name = member.get("name", "N/A")
         
-        # Fetch details
-        birth_year, party = fetch_member_details(member_id, headers)
+        # Extract party from initial data (already available)
+        party = "Unknown"
+        party_name = member.get("partyName", "")
+        if party_name:
+            if "Republican" in party_name or "GOP" in party_name:
+                party = "R"
+            elif "Democrat" in party_name:
+                party = "D"
+            elif "Independent" in party_name:
+                party = "I"
+        
+        # Fetch detailed member info for birth year (required for generation)
+        birth_year, fetched_party = fetch_member_details(member_id, headers)
+        
+        # Use fetched party if we didn't get it from initial data
+        if party == "Unknown" and fetched_party != "Unknown":
+            party = fetched_party
+        
         generation = get_generation(birth_year)
         
         # Initialize generation tracking
@@ -248,8 +270,14 @@ def fetch_congress_members_json(detailed_analysis=False):
         members_list.append(member_info)
         generation_data[generation]['members'].append(member_info)
         
-        # Rate limiting
-        time.sleep(0.25)
+        # Rate limiting - Congress API allows ~5 requests/second, so 0.2s is safe
+        time.sleep(0.2)
+        
+        # Progress indicator every 50 members
+        if (i + 1) % 50 == 0:
+            elapsed_min = ((i + 1) * 0.2 * 2) / 60  # 2 API calls per member
+            remaining = ((len(all_members_raw) - i - 1) * 0.2 * 2) / 60
+            print(f"  Progress: {i + 1}/{len(all_members_raw)} members (~{elapsed_min:.1f}m elapsed, ~{remaining:.1f}m remaining)")
     
     # Build summary
     summary = []

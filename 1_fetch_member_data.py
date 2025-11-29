@@ -48,7 +48,18 @@ def main():
     # Fetch photos
     print("Fetching member photos...")
     fetcher = CongressPhotoFetcher(api_key=API_KEY)
-    members_with_photos_df = fetcher.process_dataframe(members_df)
+    
+    # Normalize column names for photo fetcher (expects capitalized names)
+    members_normalized = members_df.rename(columns={
+        'bioguide_id': 'BioguideID',
+        'name': 'Name',
+        'party': 'Party',
+        'birth_year': 'BirthYear',
+        'generation': 'Generation',
+        'bill_count': 'BillCount'
+    })
+    
+    members_with_photos_df = fetcher.process_dataframe(members_normalized)
     members_with_photos_df.to_csv('data/congress_members_with_photos.csv', index=False)
     print(f"✓ Saved {len(members_with_photos_df)} members with photos to data/congress_members_with_photos.csv")
     print()
