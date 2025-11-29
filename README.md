@@ -258,6 +258,7 @@ chart = alt.Chart(data).mark_bar().encode(
 ## Development Workflow
 
 ### Local Testing
+
 ```bash
 # Install Vercel CLI dev server
 vercel dev
@@ -268,6 +269,7 @@ vercel dev
 ```
 
 ### Testing API Locally
+
 ```bash
 # Set environment variable
 export CONGRESS_API_KEY="your_key_here"
@@ -315,11 +317,13 @@ topic_keywords = {
 ## Team Collaboration
 
 ### Branch Strategy
+
 - `main` - production code, auto-deploys to Vercel
 - `dev_*` - feature branches for team members
 - `gh-pages` - static HTML visualizations (auto-generated)
 
 ### Making Changes
+
 1. Create feature branch: `git checkout -b dev_yourname`
 2. Test locally: `vercel dev`
 3. Push to GitHub: `git push origin dev_yourname`
@@ -327,6 +331,7 @@ topic_keywords = {
 5. Vercel auto-deploys on main branch push
 
 ### Updating Visualizations
+
 1. Update `generate_api_charts.py`
 2. Run: `python generate_api_charts.py`
 3. Commit HTML files

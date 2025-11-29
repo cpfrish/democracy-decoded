@@ -1,1 +1,28 @@
-{}
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/congress-data",
+      "dest": "/api/congress_data.py"
+    },
+    {
+      "src": "/api/member-photos",
+      "dest": "/api/member_photos.py"
+    }
+  ],
+  "functions": {
+    "api/**/*.py": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "CONGRESS_API_KEY": "@congress-api-key"
+  }
+}

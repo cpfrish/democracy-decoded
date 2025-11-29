@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-1. **Vercel Account**: Sign up at https://vercel.com
-2. **Congress.gov API Key**: Get from https://api.congress.gov/sign-up/
+1. **Vercel Account**: Sign up at <https://vercel.com>
+2. **Congress.gov API Key**: Get from <https://api.congress.gov/sign-up/>
 3. **GitHub Repository**: Your code should be pushed to GitHub
 
 ## Step-by-Step Deployment
@@ -30,6 +30,7 @@ vercel
 ```
 
 Answer the prompts:
+
 - **Set up and deploy**: Yes
 - **Which scope**: Choose your account/team
 - **Link to existing project**: No (first time)
@@ -46,6 +47,7 @@ vercel env add CONGRESS_API_KEY
 ```
 
 When prompted:
+
 - **What's the value**: Paste your Congress.gov API key
 - **Which environment**: Production (select using arrow keys)
 
@@ -144,29 +146,34 @@ vercel --prod
 ## Monitoring
 
 View logs and analytics:
+
 ```bash
 vercel logs https://your-app.vercel.app/api/congress-data
 ```
 
-Or visit: https://vercel.com/dashboard
+Or visit: <https://vercel.com/dashboard>
 
 ## Troubleshooting
 
 ### API Returns 500 Error
+
 - Check logs: `vercel logs`
 - Verify `CONGRESS_API_KEY` is set
 - Test locally: `vercel dev`
 
 ### CORS Issues in WordPress
+
 - Verify API responses include CORS headers
 - Check WordPress security plugins aren't blocking iframes
 
 ### Charts Not Loading
+
 - Verify GitHub Pages is published
 - Check browser console for errors
 - Hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
 
 ### Slow API Response
+
 - Use `?detailed=false` parameter
 - Consider upgrading Vercel plan for more function duration
 - Check Congress.gov API status
@@ -174,6 +181,7 @@ Or visit: https://vercel.com/dashboard
 ## Cost Optimization
 
 Vercel Free Tier includes:
+
 - 100GB bandwidth/month
 - 100 hours serverless function execution/month
 - No credit card required
@@ -181,6 +189,7 @@ Vercel Free Tier includes:
 For your use case (academic project), free tier should be sufficient.
 
 To monitor usage:
+
 1. Go to Vercel Dashboard
 2. Click your project
 3. Analytics → Usage

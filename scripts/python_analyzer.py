@@ -180,7 +180,7 @@ def analyze_congress_generations(detailed_analysis=True):
     """
     API_KEY = os.environ.get("CONGRESS_API_KEY") 
     if not API_KEY:
-        print("🛑 Error: CONGRESS_API_KEY environment variable not set.")
+        print(" Error: CONGRESS_API_KEY environment variable not set.")
         return
         
     headers = {"X-Api-Key": API_KEY}
