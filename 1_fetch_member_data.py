@@ -10,7 +10,7 @@ import sys
 # Add scripts directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scripts'))
 
-from congress_api_client import fetch_congress_members_json
+from congress_member_fetcher import fetch_congress_members_json
 from congress_photo_fetcher import CongressPhotoFetcher
 import pandas as pd
 
@@ -32,7 +32,7 @@ def main():
     
     # Fetch base member data
     print("Fetching member data (this takes ~2 minutes due to API rate limits)...")
-    data = fetch_congress_members_json(detailed_analysis=False)
+    data = fetch_congress_members_json()
     
     # Save summary data
     members_df = pd.DataFrame(data['members'])

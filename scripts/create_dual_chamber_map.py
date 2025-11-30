@@ -19,9 +19,14 @@ def fetch_all_congress_members():
         raise ValueError("CONGRESS_API_KEY environment variable required")
     
     headers = {"X-Api-Key": API_KEY}
+
+    input_path = get_file_path('congress_members_with_photos.csv')
+
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"{input_path} not found. Run 1_fetch_member_data.py first.")
     
     # Load base member data with photos
-    df = pd.read_csv('../data/congress_members_with_photos.csv')
+    df = pd.read_csv(input_path)
     
     # Fetch chamber, state, and district info for each member
     members_data = []
@@ -94,8 +99,9 @@ def create_dual_chamber_map():
     # Try to load from cache first
     # Determine if running from scripts/ or root directory
     data_path = 'data/congress_members_all_chambers.csv'
-    if not os.path.exists(data_path):
-        data_path = '../data/congress_members_all_chambers.csv'
+    if not os.path.exists('data'):
+        if os.path.exists('../data'):
+            data_path = '../data/congress_members_all_chambers.csv'
     
     try:
         df = pd.read_csv(data_path)
@@ -725,11 +731,16 @@ def create_dual_chamber_map():
     
     # Save HTML file
     # Determine output path based on current directory
-    output_path = 'visualizations/congress_map_dual_chamber.html'
-    if not os.path.exists('visualizations'):
-        output_path = '../visualizations/congress_map_dual_chamber.html'
+    output_dir = 'visualizations'
+    if not os.path.exists(output_dir):
+        if os.path.exists(os.path.join('..', output_dir)):
+            output_dir = os.path.join('..', output_dir)
+        else:
+            os.makedirs(output_dir, exist_ok=True)
     
-    with open(output_path, 'w') as f:
+    output_path = os.path.join(output_dir, 'congress_map_dual_chamber.html')    
+
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html_template)
     
     print(f"\nCreated dual-chamber interactive map: {output_path}")

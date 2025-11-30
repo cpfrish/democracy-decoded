@@ -1,5 +1,5 @@
 """
-Congress API Client - Refactored for JSON output
+Congress Member Fetcher - Refactored for JSON output
 Extracts core logic from python_analyzer.py for serverless use
 """
 
@@ -102,85 +102,23 @@ def fetch_member_details(member_id, headers):
         return None, "Unknown"
 
 
-def categorize_bill_topic(title, policy_area, subjects):
-    """Categorize bills into broad topic areas"""
-    title_lower = title.lower()
-    policy_lower = policy_area.lower() if policy_area else ''
-    subjects_lower = ' '.join(subjects).lower() if subjects else ''
-    
-    all_text = f"{title_lower} {policy_lower} {subjects_lower}"
-    
-    topic_keywords = {
-        'Technology': ['technology', 'cyber', 'digital', 'internet', 'artificial intelligence', 'ai', 'data', 'privacy', 'tech'],
-        'Climate/Environment': ['climate', 'environment', 'energy', 'renewable', 'carbon', 'emissions', 'green', 'clean'],
-        'Healthcare': ['health', 'medical', 'medicare', 'medicaid', 'hospital', 'healthcare', 'drug', 'pharmaceutical'],
-        'Defense/Security': ['defense', 'military', 'security', 'veteran', 'armed forces', 'homeland', 'intelligence'],
-        'Economy/Finance': ['economy', 'economic', 'finance', 'financial', 'tax', 'budget', 'banking', 'commerce'],
-        'Education': ['education', 'school', 'student', 'university', 'college', 'teacher', 'learning'],
-        'Social Issues': ['civil rights', 'equality', 'justice', 'immigration', 'housing', 'welfare', 'social'],
-        'Infrastructure': ['infrastructure', 'transportation', 'highway', 'bridge', 'road', 'transit', 'construction'],
-        'Agriculture': ['agriculture', 'farm', 'farming', 'rural', 'food', 'crop', 'livestock']
-    }
-    
-    topic_scores = {}
-    for topic, keywords in topic_keywords.items():
-        score = sum(1 for keyword in keywords if keyword in all_text)
-        if score > 0:
-            topic_scores[topic] = score
-    
-    if topic_scores:
-        return max(topic_scores.keys(), key=lambda k: topic_scores[k])
-    return 'Other'
 
-
-def fetch_detailed_bills(member_id, headers, limit=20):
-    """Fetch detailed bill data for topic analysis"""
-    endpoint = f"member/{member_id}/sponsored-legislation"
-    url = f"https://api.congress.gov/v3/{endpoint}"
-    params = {"limit": limit}
-    bills = []
-    
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        for bill in data.get("sponsoredLegislation", []):
-            latest_action = bill.get('latestAction')
-            policy_area = bill.get('policyArea')
-            subjects = bill.get('subjects', {})
-            
-            bill_info = {
-                'title': bill.get('title', ''),
-                'type': bill.get('type', ''),
-                'number': bill.get('number', ''),
-                'congress': bill.get('congress', ''),
-                'latest_action': latest_action.get('text', '') if latest_action else '',
-                'policy_area': policy_area.get('name', '') if policy_area else '',
-                'subjects': [subj.get('name', '') for subj in subjects.get('legislativeSubjects', [])] if subjects else []
-            }
-            bills.append(bill_info)
-            
-    except requests.exceptions.RequestException:
-        pass
-        
-    return bills
-
-
-def fetch_congress_members_json(detailed_analysis=False):
+def fetch_congress_members_json() -> dict:
     """
     Fetch congressional members and return as JSON-friendly dict.
     No CSV output - pure API response.
     
-    Args:
-        detailed_analysis: If True, includes bill topics (slower)
-    
     Returns:
-        dict with 'members', 'summary', and optionally 'topics'
+        dict with 'members', 'summary'
     """
     API_KEY = os.environ.get("CONGRESS_API_KEY")
     if not API_KEY:
         raise ValueError("CONGRESS_API_KEY environment variable not set")
+    
+    # Hardcoded birth years for members missing from API
+    BIRTH_YEAR_OVERRIDES = {
+        'K000404': 1975,  # Kimberlyn King-Hinds (Delegate, Northern Mariana Islands)
+    }
     
     headers = {"X-Api-Key": API_KEY}
     all_members_raw = []
@@ -226,6 +164,11 @@ def fetch_congress_members_json(detailed_analysis=False):
         # Fetch detailed member info for birth year (required for generation)
         birth_year, fetched_party = fetch_member_details(member_id, headers)
         
+        # Check for hardcoded birth year override
+        if not birth_year and member_id in BIRTH_YEAR_OVERRIDES:
+            birth_year = BIRTH_YEAR_OVERRIDES[member_id]
+            print(f"  Using hardcoded birth year for {member_name}: {birth_year}")
+        
         # Use fetched party if we didn't get it from initial data
         if party == "Unknown" and fetched_party != "Unknown":
             party = fetched_party
@@ -257,16 +200,6 @@ def fetch_congress_members_json(detailed_analysis=False):
             'bill_count': bill_count
         }
         
-        # Detailed bill analysis if requested
-        if detailed_analysis:
-            detailed_bills = fetch_detailed_bills(member_id, headers, limit=20)
-            topics = []
-            for bill in detailed_bills:
-                topic = categorize_bill_topic(bill['title'], bill['policy_area'], bill['subjects'])
-                topics.append(topic)
-                generation_data[generation]['topic_counts'][topic] += 1
-            member_info['topics'] = topics
-        
         members_list.append(member_info)
         generation_data[generation]['members'].append(member_info)
         
@@ -295,17 +228,6 @@ def fetch_congress_members_json(detailed_analysis=False):
         'members': members_list,
         'summary': summary
     }
-    
-    # Add topic data if detailed analysis
-    if detailed_analysis:
-        topics = []
-        for generation, data in generation_data.items():
-            for topic, count in data['topic_counts'].items():
-                topics.append({
-                    'generation': generation,
-                    'topic': topic,
-                    'count': count
-                })
-        response['topics'] = topics
+
     
     return response

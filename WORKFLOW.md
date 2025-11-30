@@ -1,8 +1,8 @@
-# WORKFLOW.md - Simple 3-Step Process
+# WORKFLOW.md - Project Workflow
 
 ## Overview
 
-This repository has been simplified to a clean 3-step workflow for generating congressional data visualizations.
+This repository provides a clean workflow for generating congressional data visualizations and bill tracking dashboards.
 
 ## Structure
 
@@ -11,6 +11,7 @@ congress_project/
 ├── 1_fetch_member_data.py         # Step 1: Fetch members from API
 ├── 2_fetch_location_data.py       # Step 2: Fetch state/district info
 ├── 3_create_visualizations.py     # Step 3: Generate HTML visualizations
+├── 4_create_bill_tracker.py       # Step 4: Generate bill tracker visualization
 ├── run_all.py                     # Run all 3 steps at once
 ├── README.md                      # Full documentation
 ├── requirements.txt               # Python dependencies
@@ -20,16 +21,18 @@ congress_project/
 │   ├── congress_generational_summary.csv
 │   ├── congress_members_with_photos.csv
 │   ├── congress_members_all_chambers.csv
-│   └── congress_members_districts.csv
+│   ├── congress_members_districts.csv
+│   └── congress_118_bills.csv
 │
 ├── visualizations/                # Generated HTML files
 │   ├── member_activity_scatter_interactive.html
-│   └── congress_map_dual_chamber.html
+│   ├── congress_map_dual_chamber.html
+│   └── congress_bill_tracker.html
 │
 ├── scripts/                       # Helper modules (don't run directly)
 │   ├── congress_api_client.py
-│   ├── congress_photo_api.py
 │   ├── congress_photo_fetcher.py
+│   ├── congress_bill_fetcher_bulk.py
 │   └── create_dual_chamber_map.py
 │
 └── notebooks/                     # Jupyter notebooks for exploration
@@ -60,6 +63,10 @@ python 2_fetch_location_data.py
 
 # Step 3: Create visualizations (instant)
 python 3_create_visualizations.py
+
+# Step 4 (Optional): Fetch bill data & create tracker (~5-10 minutes)
+python scripts/congress_bill_fetcher_bulk.py
+python 4_create_bill_tracker.py
 ```
 
 ## What Each Step Does
@@ -85,6 +92,15 @@ python 3_create_visualizations.py
 - **Output**:
   - `member_activity_scatter_interactive.html` - Bills vs birth year
   - `congress_map_dual_chamber.html` - House/Senate choropleth map
+
+### Step 4: Bill Tracker (Optional)
+- Fetches bill metadata from Congress.gov API
+- Gets: title, status, summary, sponsor, policy area
+- Determines tracker status (Introduced, Passed House/Senate, Became Law, etc.)
+- Creates interactive dashboard similar to congress.gov tracker
+- **Output**:
+  - `data/congress_118_bills.csv` (bill data with tracker status)
+  - `congress_bill_tracker.html` (interactive dashboard)
 
 ## Visualization Features
 
@@ -145,11 +161,11 @@ git push origin dev_colin
 
 ## Helper Modules (scripts/)
 
-These are imported by the main scripts - don't run directly:
+These are imported by the main scripts - don't run directly (except bill fetcher):
 
 - **congress_api_client.py**: Core API functions
-- **congress_photo_api.py**: Photo URL fetching
-- **congress_photo_fetcher.py**: Photo processing class
+- **congress_photo_fetcher.py**: Photo URL fetching and processing
+- **congress_bill_fetcher_bulk.py**: Bill data fetching (run for Step 4)
 - **create_dual_chamber_map.py**: Map generation logic
 
 ## Notebooks (notebooks/)

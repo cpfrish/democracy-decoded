@@ -54,6 +54,12 @@ python 2_fetch_location_data.py
 python 3_create_visualizations.py
 ```
 
+**Step 4 (Optional): Fetch bill data & create tracker (~5-10 minutes)**
+```bash
+python scripts/congress_bill_fetcher_bulk.py
+python 4_create_bill_tracker.py
+```
+
 ## What Gets Created
 
 ### Data Files (in `data/`)
@@ -77,6 +83,13 @@ python 3_create_visualizations.py
   - Senate: 50 states showing both senators
   - Photo thumbnails on hover
 
+- `congress_bill_tracker.html` - Bill status tracker dashboard (optional)
+  - Bills by tracker status (Introduced, Passed House/Senate, Became Law, etc.)
+  - Bills by type (HR, S, HJRES, etc.)
+  - Top 20 policy areas
+  - Searchable table with filters
+  - Links to full text on Congress.gov
+
 ## Project Structure
 
 ```
@@ -84,14 +97,15 @@ python 3_create_visualizations.py
 ├── 1_fetch_member_data.py         # Step 1: Get member data
 ├── 2_fetch_location_data.py       # Step 2: Get state/district/chamber
 ├── 3_create_visualizations.py     # Step 3: Generate HTML visualizations
+├── 4_create_bill_tracker.py       # Step 4: Generate bill tracker visualization
 ├── run_all.py                     # Run all steps at once
 ├── requirements.txt               # Python dependencies
 ├── data/                          # Generated CSV files (git-ignored)
 ├── visualizations/                # Generated HTML files
 ├── scripts/                       # Helper modules
 │   ├── congress_api_client.py
-│   ├── congress_photo_api.py
-│   └── congress_photo_fetcher.py
+│   ├── congress_photo_fetcher.py
+│   └── congress_bill_fetcher_bulk.py
 └── notebooks/                     # Jupyter notebooks for exploration
     ├── congress_eda.ipynb
     └── congress_graphs.ipynb
@@ -103,7 +117,7 @@ python 3_create_visualizations.py
 ✅ **Interactive Maps** - Toggle between House districts and Senate states  
 ✅ **Party Color Coding** - Democrat (blue), Republican (red), Independent (purple)  
 ✅ **Generation Analysis** - Track legislative activity across generations  
-✅ **Real-time API Data** - Fresh data from Congress.gov  
+ 
 
 ## Technologies Used
 
@@ -119,7 +133,6 @@ The Congress.gov API has rate limits. The scripts include automatic delays (0.25
 
 Data files are cached in the `data/` directory. To refresh with new data, simply delete the CSV files and re-run the scripts.
 
-## Development
 
 ### Notebooks
 
@@ -132,8 +145,7 @@ jupyter notebook notebooks/congress_eda.ipynb
 
 Helper modules are in `scripts/`:
 - `congress_api_client.py` - API interaction functions
-- `congress_photo_fetcher.py` - Photo URL fetching
-- `congress_photo_api.py` - Photo-specific API calls
+- `congress_photo_fetcher.py` - Photo URL fetching and processing
 
 ## Contributing
 
@@ -151,7 +163,4 @@ Data sourced from Congress.gov (public domain). Visualizations and code are avai
 
 ---
 
-**Questions?** Check the documentation files:
-
-- `CHOROPLETH_MAP.md` - Details on the map visualizations
-- `GITHUB_PAGES_DEPLOY.md` - Deployment instructions
+**Questions?** Check the documentation files
