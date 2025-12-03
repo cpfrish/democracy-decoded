@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"name": "data-ab2adb3f44fd9eff192135158c2cfafa"}, "mark": {"type": "bar"}, "encoding": {"color": {"field": "Percentage_Type", "title": "Data Source", "type": "nominal"}, "tooltip": [{"field": "Generation", "type": "nominal"}, {"field": "Percentage_Type", "type": "nominal"}, {"field": "Percentage", "type": "quantitative"}], "x": {"axis": {"labelAngle": 45}, "field": "Generation", "type": "nominal"}, "xOffset": {"field": "Percentage_Type", "type": "nominal"}, "y": {"axis": {"title": "Percentage (%)"}, "field": "Percentage", "scale": {"domain": [0, 45]}, "type": "quantitative"}}, "params": [{"name": "param_4", "select": {"type": "interval", "encodings": ["x", "y"]}, "bind": "scales"}], "title": "Generational Representation: Congress vs. US Population", "width": "container", "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-ab2adb3f44fd9eff192135158c2cfafa": [{"Generation": "Baby Boomer", "Percentage_Type": "In Congress", "Percentage": 42.64}, {"Generation": "Generation X", "Percentage_Type": "In Congress", "Percentage": 39.11}, {"Generation": "Millennial", "Percentage_Type": "In Congress", "Percentage": 13.59}, {"Generation": "Silent Generation", "Percentage_Type": "In Congress", "Percentage": 4.47}, {"Generation": "Generation Z", "Percentage_Type": "In Congress", "Percentage": 0.19}, {"Generation": "Baby Boomer", "Percentage_Type": "In U.S. Population", "Percentage": 19.67}, {"Generation": "Generation X", "Percentage_Type": "In U.S. Population", "Percentage": 19.27}, {"Generation": "Millennial", "Percentage_Type": "In U.S. Population", "Percentage": 21.81}, {"Generation": "Silent Generation", "Percentage_Type": "In U.S. Population", "Percentage": 4.48}, {"Generation": "Generation Z", "Percentage_Type": "In U.S. Population", "Percentage": 20.81}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>
