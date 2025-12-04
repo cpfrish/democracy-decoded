@@ -127,8 +127,10 @@ html_template = """<!DOCTYPE html>
         }}
         
         .controls {{
+            gap: 20px;
             display: flex;
             gap: 15px;
+            margin-top: 15px;
             margin-bottom: 20px;
             flex-wrap: wrap;
             align-items: center;
@@ -243,15 +245,15 @@ html_template = """<!DOCTYPE html>
             gap: 12px;
         }}
         
-        .rep-item.democrat {{
+        .rep-item.d {{
             border-left-color: #2196F3;
         }}
         
-        .rep-item.republican {{
+        .rep-item.r {{
             border-left-color: #f44336;
         }}
         
-        .rep-item.independent {{
+        .rep-item.i {{
             border-left-color: #9E9E9E;
         }}
         
@@ -319,6 +321,10 @@ html_template = """<!DOCTYPE html>
         <h1>US Congressional Representatives Map</h1>
         <p class="subtitle">Click on any state to view its senators and representatives</p>
         
+        <div id="map-container">
+            <svg id="map"></svg>
+        </div>
+
         <div class="controls">
             <div class="control-group">
                 <label for="party-filter">Filter by Party:</label>
@@ -344,10 +350,6 @@ html_template = """<!DOCTYPE html>
                 <button class="zoom-btn" id="zoom-out">Zoom Out</button>
                 <button class="zoom-btn" id="zoom-reset">Reset</button>
             </div>
-        </div>
-        
-        <div id="map-container">
-            <svg id="map"></svg>
         </div>
         
         <div class="legend">
