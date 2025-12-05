@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 """
-Generates an interactive US Congress map visualization at district level from existing CSV files.
+Generates an interactive US Congress map visualization at state level with search from existing CSV files.
 Python 3 must be installed to run this file.
 
 Setup instructions:
@@ -37,7 +38,7 @@ STATE_ABBR_TO_NAME = {
 }
 
 def load_congress_data():
-    """Load congressional data from CSV files organized by district."""
+    """Load congressional data from CSV files organized by state."""
     print("Loading congressional data from CSV files...\n")
     
     try:
@@ -46,14 +47,15 @@ def load_congress_data():
         
         print(f"✓ Loaded {len(members_df)} members from CSV")
         
-        # Build district-level data structure
-        district_data = {}
+        # Build state-level data structure
+        congress_data = defaultdict(lambda: {"senators": [], "representatives": []})
         
-        # First, collect senators by state
-        senators_by_state = defaultdict(list)
+        # Process senators
         for _, member in members_df[members_df['Chamber'] == 'Senate'].iterrows():
             state = member['State']
-            senators_by_state[state].append({
+            full_state_name = STATE_ABBR_TO_NAME.get(state, state)
+            
+            congress_data[full_state_name]["senators"].append({
                 "name": member['Name'],
                 "party": member['Party'],
                 "bioguideId": member['BioguideID'],
@@ -61,49 +63,34 @@ def load_congress_data():
                 "billCount": int(member['BillCount']) if pd.notna(member['BillCount']) else 0
             })
         
-        # Collect all representatives by state
-        reps_by_state = defaultdict(list)
+        # Process representatives
         for _, member in members_df[members_df['Chamber'] == 'House'].iterrows():
             state = member['State']
+            full_state_name = STATE_ABBR_TO_NAME.get(state, state)
             district = member['District']
             
             if pd.isna(district) or district == '' or district == '0':
-                district = 0  # At-Large
+                district = 'At-Large'
             else:
                 district = int(float(district))
             
-            rep_info = {
+            congress_data[full_state_name]["representatives"].append({
                 "name": member['Name'],
                 "party": member['Party'],
                 "bioguideId": member['BioguideID'],
                 "photoUrl": member['PhotoURL'] if pd.notna(member['PhotoURL']) else '',
                 "billCount": int(member['BillCount']) if pd.notna(member['BillCount']) else 0,
-                "district": district
-            }
-            
-            reps_by_state[state].append(rep_info)
-            
-            # Create district key (e.g., "CA-12")
-            district_key = f"{state}-{district:02d}" if district > 0 else f"{state}-AL"
-            
-            district_data[district_key] = {
-                "state": state,
-                "stateName": STATE_ABBR_TO_NAME.get(state, state),
                 "district": district,
-                "representative": rep_info,
-                "senators": senators_by_state[state],
-                "allStateReps": []  # Will be filled next
-            }
+                "state": state
+            })
         
-        # Fill in allStateReps for each district
-        for district_key in district_data:
-            state = district_data[district_key]["state"]
-            all_reps = sorted(reps_by_state[state], key=lambda x: x['district'])
-            district_data[district_key]["allStateReps"] = all_reps
+        # Sort representatives by district
+        for state in congress_data:
+            congress_data[state]["representatives"].sort(
+                key=lambda x: x['district'] if isinstance(x['district'], int) else 999
+            )
         
-        print(f"✓ Created {len(district_data)} district entries")
-        
-        return district_data
+        return dict(congress_data)
         
     except FileNotFoundError as e:
         print(f"ERROR: Could not find CSV file - {e}")
@@ -119,7 +106,7 @@ html_template = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>US Congress District Map</title>
+    <title>US Congress Map</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
     <style>
@@ -131,7 +118,7 @@ html_template = """<!DOCTYPE html>
         }}
         
         #container {{
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 12px;
@@ -151,31 +138,90 @@ html_template = """<!DOCTYPE html>
             font-size: 14px;
         }}
         
+        .search-section {{
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }}
+        
+        .search-section h2 {{
+            font-size: 16px;
+            margin: 0 0 15px 0;
+            color: #1a1a2e;
+        }}
+        
+        .search-controls {{
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }}
+        
+        .control-group {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
+        
+        .control-group label {{
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+        }}
+        
+        .control-group select, .control-group input {{
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            min-width: 180px;
+        }}
+        
+        .search-btn {{
+            padding: 8px 20px;
+            background: #5c6bc0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            height: 38px;
+        }}
+        
+        .search-btn:hover {{
+            background: #3949ab;
+        }}
+        
+        .or-divider {{
+            color: #999;
+            font-size: 14px;
+            font-weight: 500;
+            align-self: center;
+        }}
+        
         #map-container {{
             position: relative;
             width: 100%;
-            height: 700px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
+            height: 600px;
         }}
         
-        .district {{
+        .state {{
             fill: #e8eaf6;
             stroke: #fff;
-            stroke-width: 0.5;
+            stroke-width: 1.5;
             cursor: pointer;
             transition: fill 0.2s;
         }}
         
-        .district:hover {{
+        .state:hover {{
             fill: #5c6bc0;
         }}
         
-        .district.selected {{
+        .state.selected {{
             fill: #3949ab;
-            stroke: #1a237e;
-            stroke-width: 1.5;
         }}
         
         .controls {{
@@ -185,27 +231,6 @@ html_template = """<!DOCTYPE html>
             margin-top: 20px;
             flex-wrap: wrap;
             align-items: center;
-        }}
-        
-        .control-group {{
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-        
-        .control-group label {{
-            font-size: 14px;
-            font-weight: 500;
-            color: #666;
-        }}
-        
-        .control-group select {{
-            padding: 6px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            background: white;
-            cursor: pointer;
         }}
         
         .zoom-controls {{
@@ -244,12 +269,6 @@ html_template = """<!DOCTYPE html>
             font-weight: 600;
             color: #1a1a2e;
             margin-bottom: 15px;
-        }}
-        
-        .district-header {{
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 20px;
         }}
         
         .rep-section {{
@@ -349,18 +368,87 @@ html_template = """<!DOCTYPE html>
             font-size: 12px;
             color: #999;
         }}
-        
-        .loading {{
-            text-align: center;
-            padding: 50px;
-            color: #666;
-        }}
     </style>
 </head>
 <body>
     <div id="container">
-        <h1>US Congressional Districts Map</h1>
-        <p class="subtitle">Click on any congressional district to view its representative and senators</p>
+        <h1>US Congressional Representatives Map</h1>
+        <p class="subtitle">Find your senators and representative by searching or clicking on the map</p>
+        
+        <div class="search-section">
+            <h2>Search by State and District</h2>
+            <div class="search-controls">
+                <div class="control-group">
+                    <label for="state-select">Select State</label>
+                    <select id="state-select">
+                        <option value="">Choose a state...</option>
+                        <option value="Alabama">Alabama</option>
+                        <option value="Alaska">Alaska</option>
+                        <option value="Arizona">Arizona</option>
+                        <option value="Arkansas">Arkansas</option>
+                        <option value="California">California</option>
+                        <option value="Colorado">Colorado</option>
+                        <option value="Connecticut">Connecticut</option>
+                        <option value="Delaware">Delaware</option>
+                        <option value="Florida">Florida</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Hawaii">Hawaii</option>
+                        <option value="Idaho">Idaho</option>
+                        <option value="Illinois">Illinois</option>
+                        <option value="Indiana">Indiana</option>
+                        <option value="Iowa">Iowa</option>
+                        <option value="Kansas">Kansas</option>
+                        <option value="Kentucky">Kentucky</option>
+                        <option value="Louisiana">Louisiana</option>
+                        <option value="Maine">Maine</option>
+                        <option value="Maryland">Maryland</option>
+                        <option value="Massachusetts">Massachusetts</option>
+                        <option value="Michigan">Michigan</option>
+                        <option value="Minnesota">Minnesota</option>
+                        <option value="Mississippi">Mississippi</option>
+                        <option value="Missouri">Missouri</option>
+                        <option value="Montana">Montana</option>
+                        <option value="Nebraska">Nebraska</option>
+                        <option value="Nevada">Nevada</option>
+                        <option value="New Hampshire">New Hampshire</option>
+                        <option value="New Jersey">New Jersey</option>
+                        <option value="New Mexico">New Mexico</option>
+                        <option value="New York">New York</option>
+                        <option value="North Carolina">North Carolina</option>
+                        <option value="North Dakota">North Dakota</option>
+                        <option value="Ohio">Ohio</option>
+                        <option value="Oklahoma">Oklahoma</option>
+                        <option value="Oregon">Oregon</option>
+                        <option value="Pennsylvania">Pennsylvania</option>
+                        <option value="Rhode Island">Rhode Island</option>
+                        <option value="South Carolina">South Carolina</option>
+                        <option value="South Dakota">South Dakota</option>
+                        <option value="Tennessee">Tennessee</option>
+                        <option value="Texas">Texas</option>
+                        <option value="Utah">Utah</option>
+                        <option value="Vermont">Vermont</option>
+                        <option value="Virginia">Virginia</option>
+                        <option value="Washington">Washington</option>
+                        <option value="West Virginia">West Virginia</option>
+                        <option value="Wisconsin">Wisconsin</option>
+                        <option value="Wyoming">Wyoming</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="district-input">District (optional)</label>
+                    <input type="number" id="district-input" placeholder="e.g., 12" min="1" max="99">
+                </div>
+                
+                <button class="search-btn" onclick="searchRepresentative()">Search</button>
+                
+                <span class="or-divider">OR</span>
+                
+                <div style="color: #666; font-size: 14px; align-self: center;">
+                    Click a state on the map below →
+                </div>
+            </div>
+        </div>
         
         <div id="map-container">
             <svg id="map"></svg>
@@ -409,28 +497,34 @@ html_template = """<!DOCTYPE html>
         </div>
         
         <div id="info-panel">
-            <div class="placeholder">Click on a congressional district to view its representative and senators</div>
+            <div class="placeholder">Search for a state and district above, or click on a state in the map</div>
         </div>
         
         <div class="data-info">
-            Data from Congress.gov API • Congressional District Boundaries from US Census Bureau
+            Data from Congress.gov API
         </div>
     </div>
 
     <script>
-        const districtData = {district_data_json};
-        let currentDistrict = null;
+        const congressData = {congress_data_json};
+        let currentState = null;
         let currentPartyFilter = 'all';
         let currentSortBy = 'district';
 
         const width = document.getElementById('map-container').clientWidth;
-        const height = 700;
+        const height = 600;
 
         const svg = d3.select("#map")
             .attr("width", width)
-            .attr("height", height)
+            .attr("height", height);
 
         const g = svg.append("g");
+
+        const projection = d3.geoAlbersUsa()
+            .scale(width * 1.3)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
         
         // Zoom behavior
         const zoom = d3.zoom()
@@ -457,85 +551,66 @@ html_template = """<!DOCTYPE html>
         // Filter and sort controls
         document.getElementById('party-filter').addEventListener('change', (e) => {{
             currentPartyFilter = e.target.value;
-            if (currentDistrict) {{
-                showDistrictInfo(currentDistrict);
+            if (currentState) {{
+                showStateInfo(currentState.stateName, currentState.specificDistrict);
             }}
         }});
         
         document.getElementById('sort-by').addEventListener('change', (e) => {{
             currentSortBy = e.target.value;
-            if (currentDistrict) {{
-                showDistrictInfo(currentDistrict);
+            if (currentState) {{
+                showStateInfo(currentState.stateName, currentState.specificDistrict);
             }}
         }});
-
-        // Load embedded congressional district boundaries
-        const districtsGeoJSON = {district_geojson};
-
-        console.log('District GeoJSON loaded:', districtsGeoJSON);
-        console.log('Number of features:', districtsGeoJSON.features ? districtsGeoJSON.features.length : 'undefined');
-
-        // Hide loading and render map immediately
-        document.addEventListener('DOMContentLoaded', function() {{
-            console.log('DOM loaded, rendering map...');
-
-            // State FIPS to abbreviation mapping
-            const fipsToState = {{
-                '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', 
-                '09': 'CT', '10': 'DE', '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', 
-                '17': 'IL', '18': 'IN', '19': 'IA', '20': 'KS', '21': 'KY', '22': 'LA', 
-                '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN', '28': 'MS', 
-                '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', 
-                '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', 
-                '41': 'OR', '42': 'PA', '44': 'RI', '45': 'SC', '46': 'SD', '47': 'TN', 
-                '48': 'TX', '49': 'UT', '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', 
-                '55': 'WI', '56': 'WY'
-            }};
-
-            // Filter out territories
-            const continentalFeatures = districtsGeoJSON.features.filter(d => {{
-                const state = d.properties.STATEFP;
-                return !['72', '78', '66', '60', '69'].includes(state);
-            }});
+        
+        // Search function
+        function searchRepresentative() {{
+            const stateName = document.getElementById('state-select').value;
+            const district = document.getElementById('district-input').value;
             
-            const continentalGeoJSON = {{
-                type: 'FeatureCollection',
-                features: continentalFeatures
-            }};
+            if (!stateName) {{
+                alert('Please select a state');
+                return;
+            }}
             
-            const projection = d3.geoAlbersUsa()
-                .fitSize([width, height], continentalGeoJSON);
+            const districtNum = district ? parseInt(district) : null;
+            showStateInfo(stateName, districtNum);
+            
+            // Highlight the state on the map
+            g.selectAll(".state").classed("selected", false);
+            g.selectAll(".state")
+                .filter(d => d.properties.name === stateName)
+                .classed("selected", true);
+        }}
 
-            const path = d3.geoPath().projection(projection);
+        d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(us => {{
+            const states = topojson.feature(us, us.objects.states);
             
-            console.log('Rendering', continentalFeatures.length, 'continental districts');
-            
-            g.selectAll(".district")
-                .data(continentalFeatures)
+            g.selectAll(".state")
+                .data(states.features)
                 .enter().append("path")
-                .attr("class", "district")
+                .attr("class", "state")
                 .attr("d", path)
                 .on("click", function(event, d) {{
-                    const stateFIPS = d.properties.STATEFP;
-                    const state = fipsToState[stateFIPS];
-                    const districtNum = d.properties.CD119FP;
-                    const districtName = d.properties.NAMELSAD;
-                    
-                    console.log(`Clicked: ${{districtName}} (${{state}}-${{districtNum}})`);
-                    
-                    const districtKey = districtNum === '00' ? 
-                        `${{state}}-AL` : 
-                        `${{state}}-${{districtNum}}`;
-                    
-                    console.log('Looking for district key:', districtKey);
-                    
-                    g.selectAll(".district").classed("selected", false);
+                    g.selectAll(".state").classed("selected", false);
                     d3.select(this).classed("selected", true);
-                    currentDistrict = districtKey;
-                    showDistrictInfo(districtKey);
+                    currentState = {{ stateName: d.properties.name, specificDistrict: null }};
+                    showStateInfo(d.properties.name, null);
                 }});
-                    
-            console.log('Map rendering complete');
+            
+            g.selectAll(".state-label")
+                .data(states.features)
+                .enter().append("text")
+                .attr("class", "state-label")
+                .attr("transform", d => `translate(${{path.centroid(d)}})`)
+                .attr("text-anchor", "middle")
+                .attr("font-size", "10px")
+                .attr("fill", "#666")
+                .attr("pointer-events", "none")
+                .text(d => {{
+                    const abbr = getStateAbbr(d.properties.name);
+                    return abbr;
+                }});
         }});
 
         function filterMembers(members) {{
@@ -560,8 +635,8 @@ html_template = """<!DOCTYPE html>
                 sorted.sort((a, b) => b.billCount - a.billCount);
             }} else if (currentSortBy === 'district' && isRepresentatives) {{
                 sorted.sort((a, b) => {{
-                    const aVal = a.district === 0 ? 999 : a.district;
-                    const bVal = b.district === 0 ? 999 : b.district;
+                    const aVal = a.district === 'At-Large' ? 999 : a.district;
+                    const bVal = b.district === 'At-Large' ? 999 : b.district;
                     return aVal - bVal;
                 }});
             }}
@@ -574,54 +649,58 @@ html_template = """<!DOCTYPE html>
             return map[abbr] || abbr;
         }}
 
-        function showDistrictInfo(districtKey) {{
+        function showStateInfo(stateName, specificDistrict = null) {{
             const panel = document.getElementById('info-panel');
-            const data = districtData[districtKey];
+            const data = congressData[stateName];
+            
+            currentState = {{ stateName, specificDistrict }};
             
             if (!data) {{
                 panel.innerHTML = `
-                    <div class="info-header">District ${{districtKey}}</div>
-                    <div class="placeholder">No congressional data available for this district.</div>
+                    <div class="info-header">${{stateName}}</div>
+                    <div class="placeholder">No congressional data available for this state.</div>
                 `;
                 return;
             }}
             
-            const districtLabel = data.district === 0 ? 'At-Large' : `District ${{data.district}}`;
+            let html = `<div class="info-header">${{stateName}}</div>`;
             
-            let html = `
-                <div class="info-header">${{data.stateName}}</div>
-                <div class="district-header">${{districtLabel}}</div>
-            `;
-            
-            // Show the representative for this district
-            html += `<div class="rep-section">
-                <h3>Representative for this District</h3>
-                <div class="rep-list">`;
-            
-            const rep = data.representative;
-            const partyClass = rep.party.toLowerCase();
-            const photoHtml = rep.photoUrl ? 
-                `<img src="${{rep.photoUrl}}" alt="${{rep.name}}" class="rep-photo">` :
-                `<div class="rep-photo"></div>`;
-            
-            html += `
-                <div class="rep-item ${{partyClass}}">
-                    ${{photoHtml}}
-                    <div class="rep-info">
-                        <div class="rep-name">${{rep.name}}</div>
-                        <div class="rep-details">${{getPartyName(rep.party)}} • ${{districtLabel}} • ${{rep.billCount}} bills</div>
-                    </div>
-                </div>
-            `;
-            
-            html += `</div></div>`;
+            // If specific district requested, show only that representative
+            if (specificDistrict !== null) {{
+                const specificRep = data.representatives.find(r => r.district === specificDistrict);
+                
+                if (specificRep) {{
+                    html += `<div class="rep-section">
+                        <h3>Representative for District ${{specificDistrict}}</h3>
+                        <div class="rep-list">`;
+                    
+                    const partyClass = specificRep.party.toLowerCase();
+                    const photoHtml = specificRep.photoUrl ? 
+                        `<img src="${{specificRep.photoUrl}}" alt="${{specificRep.name}}" class="rep-photo">` :
+                        `<div class="rep-photo"></div>`;
+                    
+                    html += `
+                        <div class="rep-item ${{partyClass}}">
+                            ${{photoHtml}}
+                            <div class="rep-info">
+                                <div class="rep-name">${{specificRep.name}}</div>
+                                <div class="rep-details">${{getPartyName(specificRep.party)}} • District ${{specificRep.district}} • ${{specificRep.billCount}} bills</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    html += `</div></div>`;
+                }} else {{
+                    html += `<div class="placeholder">District ${{specificDistrict}} not found for this state.</div>`;
+                }}
+            }}
             
             // Filter and sort senators
             let senators = filterMembers(data.senators);
             senators = sortMembers(senators, false);
             
             html += `<div class="rep-section">
-                <h3>Senators for ${{data.stateName}} (${{senators.length}})</h3>
+                <h3>Senators (${{senators.length}})</h3>
                 <div class="rep-list">`;
             
             if (senators.length === 0) {{
@@ -647,20 +726,24 @@ html_template = """<!DOCTYPE html>
             
             html += `</div></div>`;
             
-            // Filter and sort all state representatives
-            let allReps = filterMembers(data.allStateReps);
-            allReps = sortMembers(allReps, true);
+            // Filter and sort representatives (all or remaining if specific was shown)
+            let representatives = filterMembers(data.representatives);
+            representatives = sortMembers(representatives, true);
+            
+            const repTitle = specificDistrict !== null ? 
+                `All Representatives (${{representatives.length}})` : 
+                `Representatives (${{representatives.length}})`;
             
             html += `<div class="rep-section">
-                <h3>All Representatives for ${{data.stateName}} (${{allReps.length}})</h3>
+                <h3>${{repTitle}}</h3>
                 <div class="rep-list">`;
             
-            if (allReps.length === 0) {{
+            if (representatives.length === 0) {{
                 html += `<div class="placeholder">No representatives match the current filter.</div>`;
             }} else {{
-                allReps.forEach(rep => {{
+                representatives.forEach(rep => {{
                     const partyClass = rep.party.toLowerCase();
-                    const districtLabel = rep.district === 0 ? 'At-Large' : `District ${{rep.district}}`;
+                    const districtLabel = rep.district === 'At-Large' ? 'At-Large' : `District ${{rep.district}}`;
                     const photoHtml = rep.photoUrl ? 
                         `<img src="${{rep.photoUrl}}" alt="${{rep.name}}" class="rep-photo">` :
                         `<div class="rep-photo"></div>`;
@@ -681,6 +764,25 @@ html_template = """<!DOCTYPE html>
             
             panel.innerHTML = html;
         }}
+        
+        function getStateAbbr(name) {{
+            const abbrs = {{
+                "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR",
+                "California": "CA", "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE",
+                "Florida": "FL", "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID",
+                "Illinois": "IL", "Indiana": "IN", "Iowa": "IA", "Kansas": "KS",
+                "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+                "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS",
+                "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
+                "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
+                "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
+                "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+                "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT",
+                "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
+                "Wisconsin": "WI", "Wyoming": "WY"
+            }};
+            return abbrs[name] || "";
+        }}
     </script>
 </body>
 </html>"""
@@ -689,36 +791,25 @@ def generate_html(output_file="congress_district_map.html"):
     """Generate the HTML file with congressional data from CSV files."""
     
     # Load data from CSV
-    district_data = load_congress_data()
+    congress_data = load_congress_data()
     
-    if not district_data:
+    if not congress_data:
         print("ERROR: Failed to load congressional data from CSV")
         return
     
-    # Load the district GeoJSON file
-    json_path = Path('../data/cb_2024_us_cd119_20m.json')
-    try:
-        with open(json_path, 'r') as f:
-            district_geojson = json.load(f)
-        district_geojson_str = json.dumps(district_geojson)
-        print(f'✓ Loaded district boundaries from {json_path}')
-    except FileNotFoundError:
-        print(f"ERROR: Could not find {json_path}")
-        return
-    except Exception as e:
-        print(f"ERROR loading GeoJSON: {e}")
-        return
+    print(f'✓ Processed data for {len(congress_data)} states')
     
-    print(f'✓ Processed data for {len(district_data)} districts')
+    # Count total members
+    total_senators = sum(len(data['senators']) for data in congress_data.values())
+    total_reps = sum(len(data['representatives']) for data in congress_data.values())
+    print(f'✓ Total senators: {total_senators}')
+    print(f'✓ Total representatives: {total_reps}')
     
     # Convert to JSON
-    district_data_json = json.dumps(district_data, indent=4)
+    congress_data_json = json.dumps(congress_data, indent=4)
     
     # Generate HTML
-    html_content = html_template.format(
-        district_data_json=district_data_json,
-        district_geojson=district_geojson_str
-    )
+    html_content = html_template.format(congress_data_json=congress_data_json)
     
     output_path = f'../visualizations/{output_file}'
     
@@ -727,9 +818,7 @@ def generate_html(output_file="congress_district_map.html"):
         f.write(html_content)
     
     print(f'\n✓ Generated {output_path}')
-    print(f'✓ Open the file in your browser to view the visualization')
-    print(f'\nNote: The map loads congressional district boundaries from an external source.')
-    print(f'      An internet connection is required to view the map.\n')
+    print(f'✓ Open the file in your browser to view the visualization\n')
 
 if __name__ == "__main__":
     generate_html()
