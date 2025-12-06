@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"name": "data-4bc33333529ef975b5c51ed1217ed8ac"}, "mark": {"type": "rect"}, "encoding": {"color": {"field": "Proportion", "scale": {"scheme": "blues"}, "title": "Proportion of Bills", "type": "quantitative"}, "stroke": {"value": "white"}, "strokeWidth": {"value": 2}, "tooltip": [{"field": "Generation", "type": "nominal"}, {"field": "Topic", "type": "nominal"}, {"field": "Count", "type": "quantitative"}, {"field": "Proportion", "type": "quantitative"}], "x": {"field": "Topic", "title": "Topic Area", "type": "nominal"}, "y": {"field": "Generation", "title": "Generation", "type": "nominal"}}, "height": 200, "title": "Topic Focus by Generation (Proportion of Bills)", "width": 500, "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-4bc33333529ef975b5c51ed1217ed8ac": [{"Generation": "Baby Boomer", "Topic": "Agriculture", "Count": 107, "Proportion": 0.024}, {"Generation": "Baby Boomer", "Topic": "Climate/Environment", "Count": 217, "Proportion": 0.049}, {"Generation": "Baby Boomer", "Topic": "Defense/Security", "Count": 260, "Proportion": 0.058}, {"Generation": "Baby Boomer", "Topic": "Economy/Finance", "Count": 478, "Proportion": 0.107}, {"Generation": "Baby Boomer", "Topic": "Education", "Count": 182, "Proportion": 0.041}, {"Generation": "Baby Boomer", "Topic": "Healthcare", "Count": 430, "Proportion": 0.096}, {"Generation": "Baby Boomer", "Topic": "Infrastructure", "Count": 104, "Proportion": 0.023}, {"Generation": "Baby Boomer", "Topic": "Other", "Count": 1743, "Proportion": 0.39}, {"Generation": "Baby Boomer", "Topic": "Social Issues", "Count": 203, "Proportion": 0.045}, {"Generation": "Baby Boomer", "Topic": "Technology", "Count": 745, "Proportion": 0.167}, {"Generation": "Gen X", "Topic": "Agriculture", "Count": 144, "Proportion": 0.038}, {"Generation": "Gen X", "Topic": "Climate/Environment", "Count": 181, "Proportion": 0.048}, {"Generation": "Gen X", "Topic": "Defense/Security", "Count": 353, "Proportion": 0.094}, {"Generation": "Gen X", "Topic": "Economy/Finance", "Count": 410, "Proportion": 0.109}, {"Generation": "Gen X", "Topic": "Education", "Count": 129, "Proportion": 0.034}, {"Generation": "Gen X", "Topic": "Healthcare", "Count": 352, "Proportion": 0.093}, {"Generation": "Gen X", "Topic": "Infrastructure", "Count": 104, "Proportion": 0.028}, {"Generation": "Gen X", "Topic": "Other", "Count": 1279, "Proportion": 0.339}, {"Generation": "Gen X", "Topic": "Social Issues", "Count": 207, "Proportion": 0.055}, {"Generation": "Gen X", "Topic": "Technology", "Count": 613, "Proportion": 0.163}, {"Generation": "Gen Z", "Topic": "Climate/Environment", "Count": 4, "Proportion": 0.2}, {"Generation": "Gen Z", "Topic": "Economy/Finance", "Count": 1, "Proportion": 0.05}, {"Generation": "Gen Z", "Topic": "Healthcare", "Count": 1, "Proportion": 0.05}, {"Generation": "Gen Z", "Topic": "Infrastructure", "Count": 2, "Proportion": 0.1}, {"Generation": "Gen Z", "Topic": "Other", "Count": 1, "Proportion": 0.05}, {"Generation": "Gen Z", "Topic": "Social Issues", "Count": 3, "Proportion": 0.15}, {"Generation": "Gen Z", "Topic": "Technology", "Count": 8, "Proportion": 0.4}, {"Generation": "Millennial", "Topic": "Agriculture", "Count": 49, "Proportion": 0.041}, {"Generation": "Millennial", "Topic": "Climate/Environment", "Count": 71, "Proportion": 0.06}, {"Generation": "Millennial", "Topic": "Defense/Security", "Count": 127, "Proportion": 0.107}, {"Generation": "Millennial", "Topic": "Economy/Finance", "Count": 128, "Proportion": 0.108}, {"Generation": "Millennial", "Topic": "Education", "Count": 32, "Proportion": 0.027}, {"Generation": "Millennial", "Topic": "Healthcare", "Count": 90, "Proportion": 0.076}, {"Generation": "Millennial", "Topic": "Infrastructure", "Count": 26, "Proportion": 0.022}, {"Generation": "Millennial", "Topic": "Other", "Count": 386, "Proportion": 0.326}, {"Generation": "Millennial", "Topic": "Social Issues", "Count": 81, "Proportion": 0.068}, {"Generation": "Millennial", "Topic": "Technology", "Count": 193, "Proportion": 0.163}, {"Generation": "Silent Generation", "Topic": "Agriculture", "Count": 12, "Proportion": 0.025}, {"Generation": "Silent Generation", "Topic": "Climate/Environment", "Count": 18, "Proportion": 0.037}, {"Generation": "Silent Generation", "Topic": "Defense/Security", "Count": 19, "Proportion": 0.04}, {"Generation": "Silent Generation", "Topic": "Economy/Finance", "Count": 43, "Proportion": 0.09}, {"Generation": "Silent Generation", "Topic": "Education", "Count": 19, "Proportion": 0.04}, {"Generation": "Silent Generation", "Topic": "Healthcare", "Count": 65, "Proportion": 0.135}, {"Generation": "Silent Generation", "Topic": "Infrastructure", "Count": 10, "Proportion": 0.021}, {"Generation": "Silent Generation", "Topic": "Other", "Count": 191, "Proportion": 0.398}, {"Generation": "Silent Generation", "Topic": "Social Issues", "Count": 40, "Proportion": 0.083}, {"Generation": "Silent Generation", "Topic": "Technology", "Count": 63, "Proportion": 0.131}, {"Generation": "Unknown", "Topic": "Defense/Security", "Count": 2, "Proportion": 0.222}, {"Generation": "Unknown", "Topic": "Economy/Finance", "Count": 1, "Proportion": 0.111}, {"Generation": "Unknown", "Topic": "Healthcare", "Count": 1, "Proportion": 0.111}, {"Generation": "Unknown", "Topic": "Infrastructure", "Count": 1, "Proportion": 0.111}, {"Generation": "Unknown", "Topic": "Other", "Count": 2, "Proportion": 0.222}, {"Generation": "Unknown", "Topic": "Social Issues", "Count": 1, "Proportion": 0.111}, {"Generation": "Unknown", "Topic": "Technology", "Count": 1, "Proportion": 0.111}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>

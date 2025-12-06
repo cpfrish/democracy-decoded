@@ -1,0 +1,5041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Congress Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+        }
+        
+        #container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #1a1a2e;
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin: 0 0 15px 0;
+            font-size: 14px;
+        }
+        
+        .controls {
+            gap: 20px;
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .control-group select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        .zoom-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.2s;
+        }
+        
+        .zoom-btn:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+        
+        #map-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+        }
+        
+        .state {
+            fill: #e8eaf6;
+            stroke: #fff;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: fill 0.2s;
+        }
+        
+        .state:hover {
+            fill: #5c6bc0;
+        }
+        
+        .state.selected {
+            fill: #3949ab;
+        }
+        
+        #info-panel {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            min-height: 150px;
+        }
+        
+        .info-header {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+        }
+        
+        .rep-section {
+            margin-bottom: 20px;
+        }
+        
+        .rep-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .rep-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .rep-item {
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #5c6bc0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .rep-item.d {
+            border-left-color: #2196F3;
+        }
+        
+        .rep-item.r {
+            border-left-color: #f44336;
+        }
+        
+        .rep-item.i {
+            border-left-color: #9E9E9E;
+        }
+        
+        .rep-photo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e0e0e0;
+            flex-shrink: 0;
+        }
+        
+        .rep-info {
+            flex: 1;
+        }
+        
+        .rep-name {
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+        
+        .rep-details {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .placeholder {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .legend {
+            margin-top: 15px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            font-size: 13px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .data-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>US Congressional Representatives Map</h1>
+        <p class="subtitle">Click on any state to view its senators and representatives</p>
+        
+        <div id="map-container">
+            <svg id="map"></svg>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="party-filter">Filter by Party:</label>
+                <select id="party-filter">
+                    <option value="all">All Parties</option>
+                    <option value="Democrat">Democrat</option>
+                    <option value="Republican">Republican</option>
+                    <option value="Independent">Independent</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="sort-by">Sort by:</label>
+                <select id="sort-by">
+                    <option value="district">District</option>
+                    <option value="name">Name</option>
+                    <option value="billCount">Bill Count</option>
+                </select>
+            </div>
+            
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoom-in">Zoom In</button>
+                <button class="zoom-btn" id="zoom-out">Zoom Out</button>
+                <button class="zoom-btn" id="zoom-reset">Reset</button>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2196F3;"></div>
+                <span>Democrat</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f44336;"></div>
+                <span>Republican</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #9E9E9E;"></div>
+                <span>Independent</span>
+            </div>
+        </div>
+        
+        <div id="info-panel">
+            <div class="placeholder">Click on a state to view its congressional delegation</div>
+        </div>
+        
+        <div class="data-info">
+            Data from Congress.gov API
+        </div>
+    </div>
+
+    <script>
+        const congressData = {
+    "Arizona": {
+        "senators": [
+            {
+                "name": "Kelly, Mark",
+                "party": "D",
+                "bioguideId": "K000377",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000377.jpg",
+                "billCount": 227
+            },
+            {
+                "name": "Gallego, Ruben",
+                "party": "D",
+                "bioguideId": "G000574",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000574.jpg",
+                "billCount": 191
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Schweikert, David",
+                "party": "R",
+                "bioguideId": "S001183",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001183.jpg",
+                "billCount": 178,
+                "district": 1
+            },
+            {
+                "name": "Crane, Elijah",
+                "party": "R",
+                "bioguideId": "C001132",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001132.jpg",
+                "billCount": 44,
+                "district": 2
+            },
+            {
+                "name": "Ansari, Yassamin",
+                "party": "D",
+                "bioguideId": "A000381",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/A/A000381.jpg",
+                "billCount": 20,
+                "district": 3
+            },
+            {
+                "name": "Stanton, Greg",
+                "party": "D",
+                "bioguideId": "S001211",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001211.jpg",
+                "billCount": 70,
+                "district": 4
+            },
+            {
+                "name": "Biggs, Andy",
+                "party": "R",
+                "bioguideId": "B001302",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001302.jpg",
+                "billCount": 922,
+                "district": 5
+            },
+            {
+                "name": "Ciscomani, Juan",
+                "party": "R",
+                "bioguideId": "C001133",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001133.jpg",
+                "billCount": 53,
+                "district": 6
+            },
+            {
+                "name": "Grijalva, Adelita S.",
+                "party": "D",
+                "bioguideId": "G000606",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/G/G000606.jpg",
+                "billCount": 1,
+                "district": 7
+            },
+            {
+                "name": "Hamadeh, Abraham J.",
+                "party": "R",
+                "bioguideId": "H001098",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001098.jpg",
+                "billCount": 14,
+                "district": 8
+            },
+            {
+                "name": "Gosar, Paul A.",
+                "party": "R",
+                "bioguideId": "G000565",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000565.jpg",
+                "billCount": 364,
+                "district": 9
+            }
+        ]
+    },
+    "Arkansas": {
+        "senators": [
+            {
+                "name": "Cotton, Tom",
+                "party": "R",
+                "bioguideId": "C001095",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001095.jpg",
+                "billCount": 535
+            },
+            {
+                "name": "Boozman, John",
+                "party": "R",
+                "bioguideId": "B001236",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001236.jpg",
+                "billCount": 394
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Crawford, Eric A. \"Rick\"",
+                "party": "R",
+                "bioguideId": "C001087",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001087.jpg",
+                "billCount": 136,
+                "district": 1
+            },
+            {
+                "name": "Hill, J. French",
+                "party": "R",
+                "bioguideId": "H001072",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001072.jpg",
+                "billCount": 138,
+                "district": 2
+            },
+            {
+                "name": "Womack, Steve",
+                "party": "R",
+                "bioguideId": "W000809",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000809.jpg",
+                "billCount": 61,
+                "district": 3
+            },
+            {
+                "name": "Westerman, Bruce",
+                "party": "R",
+                "bioguideId": "W000821",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000821.jpg",
+                "billCount": 89,
+                "district": 4
+            }
+        ]
+    },
+    "Indiana": {
+        "senators": [
+            {
+                "name": "Young, Todd",
+                "party": "R",
+                "bioguideId": "Y000064",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/Y000064.jpg",
+                "billCount": 400
+            },
+            {
+                "name": "Banks, Jim",
+                "party": "R",
+                "bioguideId": "B001299",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001299.jpg",
+                "billCount": 234
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Mrvan, Frank J.",
+                "party": "D",
+                "bioguideId": "M001214",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001214.jpg",
+                "billCount": 17,
+                "district": 1
+            },
+            {
+                "name": "Yakym, Rudy",
+                "party": "R",
+                "bioguideId": "Y000067",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/Y000067.jpg",
+                "billCount": 37,
+                "district": 2
+            },
+            {
+                "name": "Stutzman, Marlin A.",
+                "party": "R",
+                "bioguideId": "S001188",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001188.jpg",
+                "billCount": 35,
+                "district": 3
+            },
+            {
+                "name": "Baird, James R.",
+                "party": "R",
+                "bioguideId": "B001307",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001307.jpg",
+                "billCount": 35,
+                "district": 4
+            },
+            {
+                "name": "Spartz, Victoria",
+                "party": "R",
+                "bioguideId": "S000929",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000929.jpg",
+                "billCount": 41,
+                "district": 5
+            },
+            {
+                "name": "Shreve, Jefferson",
+                "party": "R",
+                "bioguideId": "S001229",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/S/S001229.jpg",
+                "billCount": 8,
+                "district": 6
+            },
+            {
+                "name": "Carson, Andr\u00e9",
+                "party": "D",
+                "bioguideId": "C001072",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001072.jpg",
+                "billCount": 168,
+                "district": 7
+            },
+            {
+                "name": "Messmer, Mark B.",
+                "party": "R",
+                "bioguideId": "M001233",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001233.jpg",
+                "billCount": 7,
+                "district": 8
+            },
+            {
+                "name": "Houchin, Erin",
+                "party": "R",
+                "bioguideId": "H001093",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001093.jpg",
+                "billCount": 50,
+                "district": 9
+            }
+        ]
+    },
+    "Oregon": {
+        "senators": [
+            {
+                "name": "Wyden, Ron",
+                "party": "D",
+                "bioguideId": "W000779",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000779.jpg",
+                "billCount": 1861
+            },
+            {
+                "name": "Merkley, Jeff",
+                "party": "D",
+                "bioguideId": "M001176",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001176.jpg",
+                "billCount": 1154
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Bonamici, Suzanne",
+                "party": "D",
+                "bioguideId": "B001278",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001278.jpg",
+                "billCount": 268,
+                "district": 1
+            },
+            {
+                "name": "Bentz, Cliff",
+                "party": "R",
+                "bioguideId": "B000668",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B000668.jpg",
+                "billCount": 21,
+                "district": 2
+            },
+            {
+                "name": "Dexter, Maxine",
+                "party": "D",
+                "bioguideId": "D000635",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/D/D000635.jpg",
+                "billCount": 7,
+                "district": 3
+            },
+            {
+                "name": "Hoyle, Val T.",
+                "party": "D",
+                "bioguideId": "H001094",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001094.jpg",
+                "billCount": 20,
+                "district": 4
+            },
+            {
+                "name": "Bynum, Janelle S.",
+                "party": "D",
+                "bioguideId": "B001326",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001326.jpg",
+                "billCount": 6,
+                "district": 5
+            },
+            {
+                "name": "Salinas, Andrea",
+                "party": "D",
+                "bioguideId": "S001226",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001226.jpg",
+                "billCount": 44,
+                "district": 6
+            }
+        ]
+    },
+    "Massachusetts": {
+        "senators": [
+            {
+                "name": "Warren, Elizabeth",
+                "party": "D",
+                "bioguideId": "W000817",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000817.jpg",
+                "billCount": 841
+            },
+            {
+                "name": "Markey, Edward J.",
+                "party": "D",
+                "bioguideId": "M000133",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000133.jpg",
+                "billCount": 1602
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Neal, Richard E.",
+                "party": "D",
+                "bioguideId": "N000015",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000015.jpg",
+                "billCount": 234,
+                "district": 1
+            },
+            {
+                "name": "McGovern, James P.",
+                "party": "D",
+                "bioguideId": "M000312",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000312.jpg",
+                "billCount": 421,
+                "district": 2
+            },
+            {
+                "name": "Trahan, Lori",
+                "party": "D",
+                "bioguideId": "T000482",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000482.jpg",
+                "billCount": 70,
+                "district": 3
+            },
+            {
+                "name": "Auchincloss, Jake",
+                "party": "D",
+                "bioguideId": "A000148",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000148.jpg",
+                "billCount": 19,
+                "district": 4
+            },
+            {
+                "name": "Clark, Katherine M.",
+                "party": "D",
+                "bioguideId": "C001101",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001101.jpg",
+                "billCount": 88,
+                "district": 5
+            },
+            {
+                "name": "Moulton, Seth",
+                "party": "D",
+                "bioguideId": "M001196",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001196.jpg",
+                "billCount": 99,
+                "district": 6
+            },
+            {
+                "name": "Pressley, Ayanna",
+                "party": "D",
+                "bioguideId": "P000617",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000617.jpg",
+                "billCount": 137,
+                "district": 7
+            },
+            {
+                "name": "Lynch, Stephen F.",
+                "party": "D",
+                "bioguideId": "L000562",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000562.jpg",
+                "billCount": 248,
+                "district": 8
+            },
+            {
+                "name": "Keating, William R.",
+                "party": "D",
+                "bioguideId": "K000375",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000375.jpg",
+                "billCount": 165,
+                "district": 9
+            }
+        ]
+    },
+    "Rhode Island": {
+        "senators": [
+            {
+                "name": "Whitehouse, Sheldon",
+                "party": "D",
+                "bioguideId": "W000802",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000802.jpg",
+                "billCount": 702
+            },
+            {
+                "name": "Reed, Jack",
+                "party": "D",
+                "bioguideId": "R000122",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000122.jpg",
+                "billCount": 1235
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Amo, Gabe",
+                "party": "D",
+                "bioguideId": "A000380",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000380.jpg",
+                "billCount": 16,
+                "district": 1
+            },
+            {
+                "name": "Magaziner, Seth",
+                "party": "D",
+                "bioguideId": "M001223",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001223.jpg",
+                "billCount": 38,
+                "district": 2
+            }
+        ]
+    },
+    "Vermont": {
+        "senators": [
+            {
+                "name": "Welch, Peter",
+                "party": "D",
+                "bioguideId": "W000800",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000800.jpg",
+                "billCount": 636
+            },
+            {
+                "name": "Sanders, Bernard",
+                "party": "I",
+                "bioguideId": "S000033",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000033.jpg",
+                "billCount": 1145
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Balint, Becca",
+                "party": "D",
+                "bioguideId": "B001318",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001318.jpg",
+                "billCount": 36,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Mississippi": {
+        "senators": [
+            {
+                "name": "Wicker, Roger F.",
+                "party": "R",
+                "bioguideId": "W000437",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000437.jpg",
+                "billCount": 742
+            },
+            {
+                "name": "Hyde-Smith, Cindy",
+                "party": "R",
+                "bioguideId": "H001079",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001079.jpg",
+                "billCount": 148
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Kelly, Trent",
+                "party": "R",
+                "bioguideId": "K000388",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000388.jpg",
+                "billCount": 67,
+                "district": 1
+            },
+            {
+                "name": "Thompson, Bennie G.",
+                "party": "D",
+                "bioguideId": "T000193",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000193.jpg",
+                "billCount": 251,
+                "district": 2
+            },
+            {
+                "name": "Guest, Michael",
+                "party": "R",
+                "bioguideId": "G000591",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000591.jpg",
+                "billCount": 52,
+                "district": 3
+            },
+            {
+                "name": "Ezell, Mike",
+                "party": "R",
+                "bioguideId": "E000235",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000235.jpg",
+                "billCount": 36,
+                "district": 4
+            }
+        ]
+    },
+    "Georgia": {
+        "senators": [
+            {
+                "name": "Warnock, Raphael G.",
+                "party": "D",
+                "bioguideId": "W000790",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000790.jpg",
+                "billCount": 211
+            },
+            {
+                "name": "Ossoff, Jon",
+                "party": "D",
+                "bioguideId": "O000174",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/O000174.jpg",
+                "billCount": 214
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Carter, Earl L. \"Buddy\"",
+                "party": "R",
+                "bioguideId": "C001103",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001103.jpg",
+                "billCount": 199,
+                "district": 1
+            },
+            {
+                "name": "Bishop, Sanford D.",
+                "party": "D",
+                "bioguideId": "B000490",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B000490.jpg",
+                "billCount": 140,
+                "district": 2
+            },
+            {
+                "name": "Jack, Brian",
+                "party": "R",
+                "bioguideId": "J000311",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/J/J000311.jpg",
+                "billCount": 5,
+                "district": 3
+            },
+            {
+                "name": "Johnson, Henry C. \"Hank\"",
+                "party": "D",
+                "bioguideId": "J000288",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000288.jpg",
+                "billCount": 253,
+                "district": 4
+            },
+            {
+                "name": "Williams, Nikema",
+                "party": "D",
+                "bioguideId": "W000788",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000788.jpg",
+                "billCount": 141,
+                "district": 5
+            },
+            {
+                "name": "McBath, Lucy",
+                "party": "D",
+                "bioguideId": "M001208",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001208.jpg",
+                "billCount": 66,
+                "district": 6
+            },
+            {
+                "name": "McCormick, Richard",
+                "party": "R",
+                "bioguideId": "M001218",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001218.jpg",
+                "billCount": 46,
+                "district": 7
+            },
+            {
+                "name": "Scott, Austin",
+                "party": "R",
+                "bioguideId": "S001189",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001189.jpg",
+                "billCount": 74,
+                "district": 8
+            },
+            {
+                "name": "Clyde, Andrew S.",
+                "party": "R",
+                "bioguideId": "C001116",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001116.jpg",
+                "billCount": 73,
+                "district": 9
+            },
+            {
+                "name": "Collins, Mike",
+                "party": "R",
+                "bioguideId": "C001129",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001129.jpg",
+                "billCount": 25,
+                "district": 10
+            },
+            {
+                "name": "Loudermilk, Barry",
+                "party": "R",
+                "bioguideId": "L000583",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000583.jpg",
+                "billCount": 72,
+                "district": 11
+            },
+            {
+                "name": "Allen, Rick W.",
+                "party": "R",
+                "bioguideId": "A000372",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000372.jpg",
+                "billCount": 69,
+                "district": 12
+            },
+            {
+                "name": "Scott, David",
+                "party": "D",
+                "bioguideId": "S001157",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001157.jpg",
+                "billCount": 110,
+                "district": 13
+            },
+            {
+                "name": "Greene, Marjorie Taylor",
+                "party": "R",
+                "bioguideId": "G000596",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000596.jpg",
+                "billCount": 109,
+                "district": 14
+            }
+        ]
+    },
+    "Alabama": {
+        "senators": [
+            {
+                "name": "Tuberville, Tommy",
+                "party": "R",
+                "bioguideId": "T000278",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000278.jpg",
+                "billCount": 301
+            },
+            {
+                "name": "Britt, Katie Boyd",
+                "party": "R",
+                "bioguideId": "B001319",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001319.jpg",
+                "billCount": 45
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Moore, Barry",
+                "party": "R",
+                "bioguideId": "M001212",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001212.jpg",
+                "billCount": 54,
+                "district": 1
+            },
+            {
+                "name": "Figures, Shomari",
+                "party": "D",
+                "bioguideId": "F000481",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/F/F000481.jpg",
+                "billCount": 12,
+                "district": 2
+            },
+            {
+                "name": "Rogers, Mike D.",
+                "party": "R",
+                "bioguideId": "R000575",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000575.jpg",
+                "billCount": 106,
+                "district": 3
+            },
+            {
+                "name": "Aderholt, Robert B.",
+                "party": "R",
+                "bioguideId": "A000055",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000055.jpg",
+                "billCount": 103,
+                "district": 4
+            },
+            {
+                "name": "Strong, Dale W.",
+                "party": "R",
+                "bioguideId": "S001220",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001220.jpg",
+                "billCount": 27,
+                "district": 5
+            },
+            {
+                "name": "Palmer, Gary J.",
+                "party": "R",
+                "bioguideId": "P000609",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000609.jpg",
+                "billCount": 108,
+                "district": 6
+            },
+            {
+                "name": "Sewell, Terri A.",
+                "party": "D",
+                "bioguideId": "S001185",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001185.jpg",
+                "billCount": 118,
+                "district": 7
+            }
+        ]
+    },
+    "Virginia": {
+        "senators": [
+            {
+                "name": "Warner, Mark R.",
+                "party": "D",
+                "bioguideId": "W000805",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000805.jpg",
+                "billCount": 709
+            },
+            {
+                "name": "Kaine, Tim",
+                "party": "D",
+                "bioguideId": "K000384",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000384.jpg",
+                "billCount": 543
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Wittman, Robert J.",
+                "party": "R",
+                "bioguideId": "W000804",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000804.jpg",
+                "billCount": 207,
+                "district": 1
+            },
+            {
+                "name": "Kiggans, Jennifer A.",
+                "party": "R",
+                "bioguideId": "K000399",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000399.jpg",
+                "billCount": 62,
+                "district": 2
+            },
+            {
+                "name": "Scott, Robert C. \"Bobby\"",
+                "party": "D",
+                "bioguideId": "S000185",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000185.jpg",
+                "billCount": 328,
+                "district": 3
+            },
+            {
+                "name": "McClellan, Jennifer L.",
+                "party": "D",
+                "bioguideId": "M001227",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001227.jpg",
+                "billCount": 40,
+                "district": 4
+            },
+            {
+                "name": "McGuire, John J.",
+                "party": "R",
+                "bioguideId": "M001239",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001239.jpg",
+                "billCount": 10,
+                "district": 5
+            },
+            {
+                "name": "Cline, Ben",
+                "party": "R",
+                "bioguideId": "C001118",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001118.jpg",
+                "billCount": 49,
+                "district": 6
+            },
+            {
+                "name": "Vindman, Eugene Simon",
+                "party": "D",
+                "bioguideId": "V000138",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/V/V000138.jpg",
+                "billCount": 33,
+                "district": 7
+            },
+            {
+                "name": "Beyer, Donald S.",
+                "party": "D",
+                "bioguideId": "B001292",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001292.jpg",
+                "billCount": 240,
+                "district": 8
+            },
+            {
+                "name": "Griffith, H. Morgan",
+                "party": "R",
+                "bioguideId": "G000568",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000568.jpg",
+                "billCount": 208,
+                "district": 9
+            },
+            {
+                "name": "Subramanyam, Suhas",
+                "party": "D",
+                "bioguideId": "S001230",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/S/S001230.jpg",
+                "billCount": 18,
+                "district": 10
+            },
+            {
+                "name": "Walkinshaw, James R.",
+                "party": "D",
+                "bioguideId": "W000831",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/W/W000831.jpg",
+                "billCount": 4,
+                "district": 11
+            }
+        ]
+    },
+    "Maryland": {
+        "senators": [
+            {
+                "name": "Van Hollen, Chris",
+                "party": "D",
+                "bioguideId": "V000128",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000128.jpg",
+                "billCount": 552
+            },
+            {
+                "name": "Alsobrooks, Angela D.",
+                "party": "D",
+                "bioguideId": "A000382",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/A/A000382.jpg",
+                "billCount": 38
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Harris, Andy",
+                "party": "R",
+                "bioguideId": "H001052",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001052.jpg",
+                "billCount": 47,
+                "district": 1
+            },
+            {
+                "name": "Olszewski, Johnny",
+                "party": "D",
+                "bioguideId": "O000176",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/O/O000176.jpg",
+                "billCount": 6,
+                "district": 2
+            },
+            {
+                "name": "Elfreth, Sarah",
+                "party": "D",
+                "bioguideId": "E000301",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/E/E000301.jpg",
+                "billCount": 7,
+                "district": 3
+            },
+            {
+                "name": "Ivey, Glenn",
+                "party": "D",
+                "bioguideId": "I000058",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/I000058.jpg",
+                "billCount": 10,
+                "district": 4
+            },
+            {
+                "name": "Hoyer, Steny H.",
+                "party": "D",
+                "bioguideId": "H000874",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H000874.jpg",
+                "billCount": 375,
+                "district": 5
+            },
+            {
+                "name": "McClain Delaney, April",
+                "party": "D",
+                "bioguideId": "M001232",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001232.jpg",
+                "billCount": 11,
+                "district": 6
+            },
+            {
+                "name": "Mfume, Kweisi",
+                "party": "D",
+                "bioguideId": "M000687",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000687.jpg",
+                "billCount": 89,
+                "district": 7
+            },
+            {
+                "name": "Raskin, Jamie",
+                "party": "D",
+                "bioguideId": "R000606",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000606.jpg",
+                "billCount": 122,
+                "district": 8
+            }
+        ]
+    },
+    "Minnesota": {
+        "senators": [
+            {
+                "name": "Smith, Tina",
+                "party": "D",
+                "bioguideId": "S001203",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001203.jpg",
+                "billCount": 323
+            },
+            {
+                "name": "Klobuchar, Amy",
+                "party": "D",
+                "bioguideId": "K000367",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000367.jpg",
+                "billCount": 1389
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Finstad, Brad",
+                "party": "R",
+                "bioguideId": "F000475",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000475.jpg",
+                "billCount": 50,
+                "district": 1
+            },
+            {
+                "name": "Craig, Angie",
+                "party": "D",
+                "bioguideId": "C001119",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001119.jpg",
+                "billCount": 111,
+                "district": 2
+            },
+            {
+                "name": "Morrison, Kelly",
+                "party": "D",
+                "bioguideId": "M001234",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001234.jpg",
+                "billCount": 10,
+                "district": 3
+            },
+            {
+                "name": "McCollum, Betty",
+                "party": "D",
+                "bioguideId": "M001143",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001143.jpg",
+                "billCount": 169,
+                "district": 4
+            },
+            {
+                "name": "Omar, Ilhan",
+                "party": "D",
+                "bioguideId": "O000173",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/O000173.jpg",
+                "billCount": 122,
+                "district": 5
+            },
+            {
+                "name": "Emmer, Tom",
+                "party": "R",
+                "bioguideId": "E000294",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000294.jpg",
+                "billCount": 126,
+                "district": 6
+            },
+            {
+                "name": "Fischbach, Michelle",
+                "party": "R",
+                "bioguideId": "F000470",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000470.jpg",
+                "billCount": 60,
+                "district": 7
+            },
+            {
+                "name": "Stauber, Pete",
+                "party": "R",
+                "bioguideId": "S001212",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001212.jpg",
+                "billCount": 91,
+                "district": 8
+            }
+        ]
+    },
+    "North Carolina": {
+        "senators": [
+            {
+                "name": "Tillis, Thomas",
+                "party": "R",
+                "bioguideId": "T000476",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000476.jpg",
+                "billCount": 664
+            },
+            {
+                "name": "Budd, Ted",
+                "party": "R",
+                "bioguideId": "B001305",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001305.jpg",
+                "billCount": 233
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Davis, Donald G.",
+                "party": "D",
+                "bioguideId": "D000230",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000230.jpg",
+                "billCount": 50,
+                "district": 1
+            },
+            {
+                "name": "Ross, Deborah K.",
+                "party": "D",
+                "bioguideId": "R000305",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000305.jpg",
+                "billCount": 69,
+                "district": 2
+            },
+            {
+                "name": "Murphy, Gregory F.",
+                "party": "R",
+                "bioguideId": "M001210",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001210.jpg",
+                "billCount": 110,
+                "district": 3
+            },
+            {
+                "name": "Foushee, Valerie P.",
+                "party": "D",
+                "bioguideId": "F000477",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000477.jpg",
+                "billCount": 18,
+                "district": 4
+            },
+            {
+                "name": "Foxx, Virginia",
+                "party": "R",
+                "bioguideId": "F000450",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000450.jpg",
+                "billCount": 253,
+                "district": 5
+            },
+            {
+                "name": "McDowell, Addison P.",
+                "party": "R",
+                "bioguideId": "M001240",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001240.jpg",
+                "billCount": 9,
+                "district": 6
+            },
+            {
+                "name": "Rouzer, David",
+                "party": "R",
+                "bioguideId": "R000603",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000603.jpg",
+                "billCount": 95,
+                "district": 7
+            },
+            {
+                "name": "Harris, Mark",
+                "party": "R",
+                "bioguideId": "H001102",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001102.jpg",
+                "billCount": 11,
+                "district": 8
+            },
+            {
+                "name": "Hudson, Richard",
+                "party": "R",
+                "bioguideId": "H001067",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001067.jpg",
+                "billCount": 140,
+                "district": 9
+            },
+            {
+                "name": "Harrigan, Pat",
+                "party": "R",
+                "bioguideId": "H001101",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001101.jpg",
+                "billCount": 11,
+                "district": 10
+            },
+            {
+                "name": "Edwards, Chuck",
+                "party": "R",
+                "bioguideId": "E000246",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000246.jpg",
+                "billCount": 39,
+                "district": 11
+            },
+            {
+                "name": "Adams, Alma S.",
+                "party": "D",
+                "bioguideId": "A000370",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000370.jpg",
+                "billCount": 173,
+                "district": 12
+            },
+            {
+                "name": "Knott, Brad",
+                "party": "R",
+                "bioguideId": "K000405",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/K/K000405.jpg",
+                "billCount": 3,
+                "district": 13
+            },
+            {
+                "name": "Moore, Tim",
+                "party": "R",
+                "bioguideId": "M001236",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001236.jpg",
+                "billCount": 15,
+                "district": 14
+            }
+        ]
+    },
+    "Alaska": {
+        "senators": [
+            {
+                "name": "Sullivan, Dan",
+                "party": "R",
+                "bioguideId": "S001198",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001198.jpg",
+                "billCount": 518
+            },
+            {
+                "name": "Murkowski, Lisa",
+                "party": "R",
+                "bioguideId": "M001153",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001153.jpg",
+                "billCount": 1175
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Begich, Nicholas J.",
+                "party": "R",
+                "bioguideId": "B001323",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001323.jpg",
+                "billCount": 22,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "South Dakota": {
+        "senators": [
+            {
+                "name": "Thune, John",
+                "party": "R",
+                "bioguideId": "T000250",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000250.jpg",
+                "billCount": 1006
+            },
+            {
+                "name": "Rounds, Mike",
+                "party": "R",
+                "bioguideId": "R000605",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000605.jpg",
+                "billCount": 382
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Johnson, Dusty",
+                "party": "R",
+                "bioguideId": "J000301",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000301.jpg",
+                "billCount": 124,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Montana": {
+        "senators": [
+            {
+                "name": "Sheehy, Tim",
+                "party": "R",
+                "bioguideId": "S001232",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/S/S001232.jpg",
+                "billCount": 48
+            },
+            {
+                "name": "Daines, Steve",
+                "party": "R",
+                "bioguideId": "D000618",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000618.jpg",
+                "billCount": 613
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Zinke, Ryan K.",
+                "party": "R",
+                "bioguideId": "Z000018",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/Z000018.jpg",
+                "billCount": 55,
+                "district": 1
+            },
+            {
+                "name": "Downing, Troy",
+                "party": "R",
+                "bioguideId": "D000634",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/D/D000634.jpg",
+                "billCount": 17,
+                "district": 2
+            }
+        ]
+    },
+    "Florida": {
+        "senators": [
+            {
+                "name": "Scott, Rick",
+                "party": "R",
+                "bioguideId": "S001217",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001217.jpg",
+                "billCount": 597
+            },
+            {
+                "name": "Moody, Ashley",
+                "party": "R",
+                "bioguideId": "M001244",
+                "photoUrl": "https://via.placeholder.com/225x275/C23B22/FFFFFF?text=MA",
+                "billCount": 22
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Patronis, Jimmy",
+                "party": "R",
+                "bioguideId": "P000622",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/P/P000622.jpg",
+                "billCount": 9,
+                "district": 1
+            },
+            {
+                "name": "Dunn, Neal P.",
+                "party": "R",
+                "bioguideId": "D000628",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000628.jpg",
+                "billCount": 84,
+                "district": 2
+            },
+            {
+                "name": "Cammack, Kat",
+                "party": "R",
+                "bioguideId": "C001039",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001039.jpg",
+                "billCount": 67,
+                "district": 3
+            },
+            {
+                "name": "Bean, Aaron",
+                "party": "R",
+                "bioguideId": "B001314",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001314.jpg",
+                "billCount": 39,
+                "district": 4
+            },
+            {
+                "name": "Rutherford, John H.",
+                "party": "R",
+                "bioguideId": "R000609",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000609.jpg",
+                "billCount": 47,
+                "district": 5
+            },
+            {
+                "name": "Fine, Randy",
+                "party": "R",
+                "bioguideId": "F000484",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/F/F000484.jpg",
+                "billCount": 20,
+                "district": 6
+            },
+            {
+                "name": "Mills, Cory",
+                "party": "R",
+                "bioguideId": "M001216",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001216.jpg",
+                "billCount": 38,
+                "district": 7
+            },
+            {
+                "name": "Haridopolos, Mike",
+                "party": "R",
+                "bioguideId": "H001099",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001099.jpg",
+                "billCount": 2,
+                "district": 8
+            },
+            {
+                "name": "Soto, Darren",
+                "party": "D",
+                "bioguideId": "S001200",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001200.jpg",
+                "billCount": 147,
+                "district": 9
+            },
+            {
+                "name": "Frost, Maxwell",
+                "party": "D",
+                "bioguideId": "F000476",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000476.jpg",
+                "billCount": 32,
+                "district": 10
+            },
+            {
+                "name": "Webster, Daniel",
+                "party": "R",
+                "bioguideId": "W000806",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000806.jpg",
+                "billCount": 58,
+                "district": 11
+            },
+            {
+                "name": "Bilirakis, Gus M.",
+                "party": "R",
+                "bioguideId": "B001257",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001257.jpg",
+                "billCount": 288,
+                "district": 12
+            },
+            {
+                "name": "Luna, Anna Paulina",
+                "party": "R",
+                "bioguideId": "L000596",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/L/L000596.jpg",
+                "billCount": 64,
+                "district": 13
+            },
+            {
+                "name": "Castor, Kathy",
+                "party": "D",
+                "bioguideId": "C001066",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001066.jpg",
+                "billCount": 205,
+                "district": 14
+            },
+            {
+                "name": "Lee, Laurel M.",
+                "party": "R",
+                "bioguideId": "L000597",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000597.jpg",
+                "billCount": 37,
+                "district": 15
+            },
+            {
+                "name": "Buchanan, Vern",
+                "party": "R",
+                "bioguideId": "B001260",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001260.jpg",
+                "billCount": 209,
+                "district": 16
+            },
+            {
+                "name": "Steube, W. Gregory",
+                "party": "R",
+                "bioguideId": "S001214",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001214.jpg",
+                "billCount": 246,
+                "district": 17
+            },
+            {
+                "name": "Franklin, Scott",
+                "party": "R",
+                "bioguideId": "F000472",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000472.jpg",
+                "billCount": 42,
+                "district": 18
+            },
+            {
+                "name": "Donalds, Byron",
+                "party": "R",
+                "bioguideId": "D000032",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000032.jpg",
+                "billCount": 141,
+                "district": 19
+            },
+            {
+                "name": "Cherfilus-McCormick, Sheila",
+                "party": "D",
+                "bioguideId": "C001127",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001127.jpg",
+                "billCount": 38,
+                "district": 20
+            },
+            {
+                "name": "Mast, Brian J.",
+                "party": "R",
+                "bioguideId": "M001199",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001199.jpg",
+                "billCount": 142,
+                "district": 21
+            },
+            {
+                "name": "Frankel, Lois",
+                "party": "D",
+                "bioguideId": "F000462",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000462.jpg",
+                "billCount": 94,
+                "district": 22
+            },
+            {
+                "name": "Moskowitz, Jared",
+                "party": "D",
+                "bioguideId": "M001217",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001217.jpg",
+                "billCount": 31,
+                "district": 23
+            },
+            {
+                "name": "Wilson, Frederica S.",
+                "party": "D",
+                "bioguideId": "W000808",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000808.jpg",
+                "billCount": 167,
+                "district": 24
+            },
+            {
+                "name": "Wasserman Schultz, Debbie",
+                "party": "D",
+                "bioguideId": "W000797",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000797.jpg",
+                "billCount": 168,
+                "district": 25
+            },
+            {
+                "name": "Diaz-Balart, Mario",
+                "party": "R",
+                "bioguideId": "D000600",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000600.jpg",
+                "billCount": 108,
+                "district": 26
+            },
+            {
+                "name": "Salazar, Maria Elvira",
+                "party": "R",
+                "bioguideId": "S000168",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000168.jpg",
+                "billCount": 66,
+                "district": 27
+            },
+            {
+                "name": "Gimenez, Carlos A.",
+                "party": "R",
+                "bioguideId": "G000593",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000593.jpg",
+                "billCount": 53,
+                "district": 28
+            }
+        ]
+    },
+    "Michigan": {
+        "senators": [
+            {
+                "name": "Slotkin, Elissa",
+                "party": "D",
+                "bioguideId": "S001208",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001208.jpg",
+                "billCount": 196
+            },
+            {
+                "name": "Peters, Gary C.",
+                "party": "D",
+                "bioguideId": "P000595",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000595.jpg",
+                "billCount": 847
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Bergman, Jack",
+                "party": "R",
+                "bioguideId": "B001301",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001301.jpg",
+                "billCount": 94,
+                "district": 1
+            },
+            {
+                "name": "Moolenaar, John R.",
+                "party": "R",
+                "bioguideId": "M001194",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001194.jpg",
+                "billCount": 92,
+                "district": 2
+            },
+            {
+                "name": "Scholten, Hillary J.",
+                "party": "D",
+                "bioguideId": "S001221",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001221.jpg",
+                "billCount": 30,
+                "district": 3
+            },
+            {
+                "name": "Huizenga, Bill",
+                "party": "R",
+                "bioguideId": "H001058",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001058.jpg",
+                "billCount": 162,
+                "district": 4
+            },
+            {
+                "name": "Walberg, Tim",
+                "party": "R",
+                "bioguideId": "W000798",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000798.jpg",
+                "billCount": 215,
+                "district": 5
+            },
+            {
+                "name": "Dingell, Debbie",
+                "party": "D",
+                "bioguideId": "D000624",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000624.jpg",
+                "billCount": 242,
+                "district": 6
+            },
+            {
+                "name": "Barrett, Tom",
+                "party": "R",
+                "bioguideId": "B001321",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001321.jpg",
+                "billCount": 15,
+                "district": 7
+            },
+            {
+                "name": "McDonald Rivet, Kristen",
+                "party": "D",
+                "bioguideId": "M001237",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001237.jpg",
+                "billCount": 8,
+                "district": 8
+            },
+            {
+                "name": "McClain, Lisa C.",
+                "party": "R",
+                "bioguideId": "M001136",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001136.jpg",
+                "billCount": 67,
+                "district": 9
+            },
+            {
+                "name": "James, John",
+                "party": "R",
+                "bioguideId": "J000307",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/J/J000307.jpg",
+                "billCount": 54,
+                "district": 10
+            },
+            {
+                "name": "Stevens, Haley M.",
+                "party": "D",
+                "bioguideId": "S001215",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001215.jpg",
+                "billCount": 102,
+                "district": 11
+            },
+            {
+                "name": "Tlaib, Rashida",
+                "party": "D",
+                "bioguideId": "T000481",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000481.jpg",
+                "billCount": 120,
+                "district": 12
+            },
+            {
+                "name": "Thanedar, Shri",
+                "party": "D",
+                "bioguideId": "T000488",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000488.jpg",
+                "billCount": 49,
+                "district": 13
+            }
+        ]
+    },
+    "South Carolina": {
+        "senators": [
+            {
+                "name": "Scott, Tim",
+                "party": "R",
+                "bioguideId": "S001184",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001184.jpg",
+                "billCount": 440
+            },
+            {
+                "name": "Graham, Lindsey",
+                "party": "R",
+                "bioguideId": "G000359",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000359.jpg",
+                "billCount": 746
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Mace, Nancy",
+                "party": "R",
+                "bioguideId": "M000194",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000194.jpg",
+                "billCount": 165,
+                "district": 1
+            },
+            {
+                "name": "Wilson, Joe",
+                "party": "R",
+                "bioguideId": "W000795",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000795.jpg",
+                "billCount": 332,
+                "district": 2
+            },
+            {
+                "name": "Biggs, Sheri",
+                "party": "R",
+                "bioguideId": "B001325",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001325.jpg",
+                "billCount": 8,
+                "district": 3
+            },
+            {
+                "name": "Timmons, William R.",
+                "party": "R",
+                "bioguideId": "T000480",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000480.jpg",
+                "billCount": 36,
+                "district": 4
+            },
+            {
+                "name": "Norman, Ralph",
+                "party": "R",
+                "bioguideId": "N000190",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000190.jpg",
+                "billCount": 170,
+                "district": 5
+            },
+            {
+                "name": "Clyburn, James E.",
+                "party": "D",
+                "bioguideId": "C000537",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C000537.jpg",
+                "billCount": 121,
+                "district": 6
+            },
+            {
+                "name": "Fry, Russell",
+                "party": "R",
+                "bioguideId": "F000478",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000478.jpg",
+                "billCount": 28,
+                "district": 7
+            }
+        ]
+    },
+    "New Hampshire": {
+        "senators": [
+            {
+                "name": "Shaheen, Jeanne",
+                "party": "D",
+                "bioguideId": "S001181",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001181.jpg",
+                "billCount": 1127
+            },
+            {
+                "name": "Hassan, Margaret Wood",
+                "party": "D",
+                "bioguideId": "H001076",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001076.jpg",
+                "billCount": 352
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Pappas, Chris",
+                "party": "D",
+                "bioguideId": "P000614",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000614.jpg",
+                "billCount": 145,
+                "district": 1
+            },
+            {
+                "name": "Goodlander, Maggie",
+                "party": "D",
+                "bioguideId": "G000604",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/G/G000604.jpg",
+                "billCount": 4,
+                "district": 2
+            }
+        ]
+    },
+    "Missouri": {
+        "senators": [
+            {
+                "name": "Schmitt, Eric",
+                "party": "R",
+                "bioguideId": "S001227",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001227.jpg",
+                "billCount": 93
+            },
+            {
+                "name": "Hawley, Josh",
+                "party": "R",
+                "bioguideId": "H001089",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001089.jpg",
+                "billCount": 327
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Bell, Wesley",
+                "party": "D",
+                "bioguideId": "B001324",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001324.jpg",
+                "billCount": 16,
+                "district": 1
+            },
+            {
+                "name": "Wagner, Ann",
+                "party": "R",
+                "bioguideId": "W000812",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000812.jpg",
+                "billCount": 128,
+                "district": 2
+            },
+            {
+                "name": "Onder, Robert F.",
+                "party": "R",
+                "bioguideId": "O000177",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/O/O000177.jpg",
+                "billCount": 13,
+                "district": 3
+            },
+            {
+                "name": "Alford, Mark",
+                "party": "R",
+                "bioguideId": "A000379",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000379.jpg",
+                "billCount": 41,
+                "district": 4
+            },
+            {
+                "name": "Cleaver, Emanuel",
+                "party": "D",
+                "bioguideId": "C001061",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001061.jpg",
+                "billCount": 221,
+                "district": 5
+            },
+            {
+                "name": "Graves, Sam",
+                "party": "R",
+                "bioguideId": "G000546",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000546.jpg",
+                "billCount": 267,
+                "district": 6
+            },
+            {
+                "name": "Burlison, Eric",
+                "party": "R",
+                "bioguideId": "B001316",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001316.jpg",
+                "billCount": 46,
+                "district": 7
+            },
+            {
+                "name": "Smith, Jason",
+                "party": "R",
+                "bioguideId": "S001195",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001195.jpg",
+                "billCount": 121,
+                "district": 8
+            }
+        ]
+    },
+    "Hawaii": {
+        "senators": [
+            {
+                "name": "Schatz, Brian",
+                "party": "D",
+                "bioguideId": "S001194",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001194.jpg",
+                "billCount": 673
+            },
+            {
+                "name": "Hirono, Mazie K.",
+                "party": "D",
+                "bioguideId": "H001042",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001042.jpg",
+                "billCount": 726
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Case, Ed",
+                "party": "D",
+                "bioguideId": "C001055",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001055.jpg",
+                "billCount": 129,
+                "district": 1
+            },
+            {
+                "name": "Tokuda, Jill N.",
+                "party": "D",
+                "bioguideId": "T000487",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000487.jpg",
+                "billCount": 59,
+                "district": 2
+            }
+        ]
+    },
+    "New York": {
+        "senators": [
+            {
+                "name": "Schumer, Charles E.",
+                "party": "D",
+                "bioguideId": "S000148",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000148.jpg",
+                "billCount": 2422
+            },
+            {
+                "name": "Gillibrand, Kirsten E.",
+                "party": "D",
+                "bioguideId": "G000555",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000555.jpg",
+                "billCount": 879
+            }
+        ],
+        "representatives": [
+            {
+                "name": "LaLota, Nick",
+                "party": "R",
+                "bioguideId": "L000598",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000598.jpg",
+                "billCount": 58,
+                "district": 1
+            },
+            {
+                "name": "Garbarino, Andrew R.",
+                "party": "R",
+                "bioguideId": "G000597",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000597.jpg",
+                "billCount": 88,
+                "district": 2
+            },
+            {
+                "name": "Suozzi, Thomas R.",
+                "party": "D",
+                "bioguideId": "S001201",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001201.jpg",
+                "billCount": 76,
+                "district": 3
+            },
+            {
+                "name": "Gillen, Laura",
+                "party": "D",
+                "bioguideId": "G000602",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/G/G000602.jpg",
+                "billCount": 7,
+                "district": 4
+            },
+            {
+                "name": "Meeks, Gregory W.",
+                "party": "D",
+                "bioguideId": "M001137",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001137.jpg",
+                "billCount": 232,
+                "district": 5
+            },
+            {
+                "name": "Meng, Grace",
+                "party": "D",
+                "bioguideId": "M001188",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001188.jpg",
+                "billCount": 305,
+                "district": 6
+            },
+            {
+                "name": "Vel\u00e1zquez, Nydia M.",
+                "party": "D",
+                "bioguideId": "V000081",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000081.jpg",
+                "billCount": 493,
+                "district": 7
+            },
+            {
+                "name": "Jeffries, Hakeem S.",
+                "party": "D",
+                "bioguideId": "J000294",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000294.jpg",
+                "billCount": 133,
+                "district": 8
+            },
+            {
+                "name": "Clarke, Yvette D.",
+                "party": "D",
+                "bioguideId": "C001067",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001067.jpg",
+                "billCount": 195,
+                "district": 9
+            },
+            {
+                "name": "Goldman, Daniel S.",
+                "party": "D",
+                "bioguideId": "G000599",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000599.jpg",
+                "billCount": 38,
+                "district": 10
+            },
+            {
+                "name": "Malliotakis, Nicole",
+                "party": "R",
+                "bioguideId": "M000317",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000317.jpg",
+                "billCount": 127,
+                "district": 11
+            },
+            {
+                "name": "Nadler, Jerrold",
+                "party": "D",
+                "bioguideId": "N000002",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000002.jpg",
+                "billCount": 540,
+                "district": 12
+            },
+            {
+                "name": "Espaillat, Adriano",
+                "party": "D",
+                "bioguideId": "E000297",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000297.jpg",
+                "billCount": 224,
+                "district": 13
+            },
+            {
+                "name": "Ocasio-Cortez, Alexandria",
+                "party": "D",
+                "bioguideId": "O000172",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/O000172.jpg",
+                "billCount": 70,
+                "district": 14
+            },
+            {
+                "name": "Torres, Ritchie",
+                "party": "D",
+                "bioguideId": "T000486",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000486.jpg",
+                "billCount": 150,
+                "district": 15
+            },
+            {
+                "name": "Latimer, George",
+                "party": "D",
+                "bioguideId": "L000606",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/L/L000606.jpg",
+                "billCount": 1,
+                "district": 16
+            },
+            {
+                "name": "Lawler, Michael",
+                "party": "R",
+                "bioguideId": "L000599",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/L/L000599.jpg",
+                "billCount": 137,
+                "district": 17
+            },
+            {
+                "name": "Ryan, Patrick",
+                "party": "D",
+                "bioguideId": "R000579",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000579.jpg",
+                "billCount": 36,
+                "district": 18
+            },
+            {
+                "name": "Riley, Josh",
+                "party": "D",
+                "bioguideId": "R000622",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/R/R000622.jpg",
+                "billCount": 8,
+                "district": 19
+            },
+            {
+                "name": "Tonko, Paul",
+                "party": "D",
+                "bioguideId": "T000469",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000469.jpg",
+                "billCount": 211,
+                "district": 20
+            },
+            {
+                "name": "Stefanik, Elise M.",
+                "party": "R",
+                "bioguideId": "S001196",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001196.jpg",
+                "billCount": 190,
+                "district": 21
+            },
+            {
+                "name": "Mannion, John W.",
+                "party": "D",
+                "bioguideId": "M001231",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001231.jpg",
+                "billCount": 4,
+                "district": 22
+            },
+            {
+                "name": "Langworthy, Nicholas A.",
+                "party": "R",
+                "bioguideId": "L000600",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000600.jpg",
+                "billCount": 66,
+                "district": 23
+            },
+            {
+                "name": "Tenney, Claudia",
+                "party": "R",
+                "bioguideId": "T000478",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000478.jpg",
+                "billCount": 218,
+                "district": 24
+            },
+            {
+                "name": "Morelle, Joseph D.",
+                "party": "D",
+                "bioguideId": "M001206",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001206.jpg",
+                "billCount": 126,
+                "district": 25
+            },
+            {
+                "name": "Kennedy, Timothy M.",
+                "party": "D",
+                "bioguideId": "K000402",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/K/K000402.jpg",
+                "billCount": 26,
+                "district": 26
+            }
+        ]
+    },
+    "California": {
+        "senators": [
+            {
+                "name": "Schiff, Adam B.",
+                "party": "D",
+                "bioguideId": "S001150",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001150.jpg",
+                "billCount": 439
+            },
+            {
+                "name": "Padilla, Alex",
+                "party": "D",
+                "bioguideId": "P000145",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000145.jpg",
+                "billCount": 468
+            }
+        ],
+        "representatives": [
+            {
+                "name": "LaMalfa, Doug",
+                "party": "R",
+                "bioguideId": "L000578",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000578.jpg",
+                "billCount": 131,
+                "district": 1
+            },
+            {
+                "name": "Huffman, Jared",
+                "party": "D",
+                "bioguideId": "H001068",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001068.jpg",
+                "billCount": 235,
+                "district": 2
+            },
+            {
+                "name": "Kiley, Kevin",
+                "party": "R",
+                "bioguideId": "K000401",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000401.jpg",
+                "billCount": 37,
+                "district": 3
+            },
+            {
+                "name": "Thompson, Mike",
+                "party": "D",
+                "bioguideId": "T000460",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000460.jpg",
+                "billCount": 355,
+                "district": 4
+            },
+            {
+                "name": "McClintock, Tom",
+                "party": "R",
+                "bioguideId": "M001177",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001177.jpg",
+                "billCount": 151,
+                "district": 5
+            },
+            {
+                "name": "Bera, Ami",
+                "party": "D",
+                "bioguideId": "B001287",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001287.jpg",
+                "billCount": 110,
+                "district": 6
+            },
+            {
+                "name": "Matsui, Doris O.",
+                "party": "D",
+                "bioguideId": "M001163",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001163.jpg",
+                "billCount": 285,
+                "district": 7
+            },
+            {
+                "name": "Garamendi, John",
+                "party": "D",
+                "bioguideId": "G000559",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000559.jpg",
+                "billCount": 237,
+                "district": 8
+            },
+            {
+                "name": "Harder, Josh",
+                "party": "D",
+                "bioguideId": "H001090",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001090.jpg",
+                "billCount": 141,
+                "district": 9
+            },
+            {
+                "name": "DeSaulnier, Mark",
+                "party": "D",
+                "bioguideId": "D000623",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000623.jpg",
+                "billCount": 212,
+                "district": 10
+            },
+            {
+                "name": "Pelosi, Nancy",
+                "party": "D",
+                "bioguideId": "P000197",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000197.jpg",
+                "billCount": 199,
+                "district": 11
+            },
+            {
+                "name": "Simon, Lateefah",
+                "party": "D",
+                "bioguideId": "S001231",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/S/S001231.jpg",
+                "billCount": 3,
+                "district": 12
+            },
+            {
+                "name": "Gray, Adam",
+                "party": "D",
+                "bioguideId": "G000605",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/G/G000605.jpg",
+                "billCount": 4,
+                "district": 13
+            },
+            {
+                "name": "Swalwell, Eric",
+                "party": "D",
+                "bioguideId": "S001193",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001193.jpg",
+                "billCount": 106,
+                "district": 14
+            },
+            {
+                "name": "Mullin, Kevin",
+                "party": "D",
+                "bioguideId": "M001225",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001225.jpg",
+                "billCount": 26,
+                "district": 15
+            },
+            {
+                "name": "Liccardo, Sam T.",
+                "party": "D",
+                "bioguideId": "L000607",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/L/L000607.jpg",
+                "billCount": 11,
+                "district": 16
+            },
+            {
+                "name": "Khanna, Ro",
+                "party": "D",
+                "bioguideId": "K000389",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000389.jpg",
+                "billCount": 170,
+                "district": 17
+            },
+            {
+                "name": "Lofgren, Zoe",
+                "party": "D",
+                "bioguideId": "L000397",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000397.jpg",
+                "billCount": 365,
+                "district": 18
+            },
+            {
+                "name": "Panetta, Jimmy",
+                "party": "D",
+                "bioguideId": "P000613",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000613.jpg",
+                "billCount": 210,
+                "district": 19
+            },
+            {
+                "name": "Fong, Vince",
+                "party": "R",
+                "bioguideId": "F000480",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/F/F000480.jpg",
+                "billCount": 13,
+                "district": 20
+            },
+            {
+                "name": "Costa, Jim",
+                "party": "D",
+                "bioguideId": "C001059",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001059.jpg",
+                "billCount": 184,
+                "district": 21
+            },
+            {
+                "name": "Valadao, David G.",
+                "party": "R",
+                "bioguideId": "V000129",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000129.jpg",
+                "billCount": 79,
+                "district": 22
+            },
+            {
+                "name": "Obernolte, Jay",
+                "party": "R",
+                "bioguideId": "O000019",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/O000019.jpg",
+                "billCount": 62,
+                "district": 23
+            },
+            {
+                "name": "Carbajal, Salud O.",
+                "party": "D",
+                "bioguideId": "C001112",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001112.jpg",
+                "billCount": 140,
+                "district": 24
+            },
+            {
+                "name": "Ruiz, Raul",
+                "party": "D",
+                "bioguideId": "R000599",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000599.jpg",
+                "billCount": 268,
+                "district": 25
+            },
+            {
+                "name": "Brownley, Julia",
+                "party": "D",
+                "bioguideId": "B001285",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001285.jpg",
+                "billCount": 301,
+                "district": 26
+            },
+            {
+                "name": "Whitesides, George",
+                "party": "D",
+                "bioguideId": "W000830",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/W/W000830.jpg",
+                "billCount": 6,
+                "district": 27
+            },
+            {
+                "name": "Chu, Judy",
+                "party": "D",
+                "bioguideId": "C001080",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001080.jpg",
+                "billCount": 237,
+                "district": 28
+            },
+            {
+                "name": "Rivas, Luz M.",
+                "party": "D",
+                "bioguideId": "R000620",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/R/R000620.jpg",
+                "billCount": 6,
+                "district": 29
+            },
+            {
+                "name": "Friedman, Laura",
+                "party": "D",
+                "bioguideId": "F000483",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/F/F000483.jpg",
+                "billCount": 8,
+                "district": 30
+            },
+            {
+                "name": "Cisneros, Gilbert Ray",
+                "party": "D",
+                "bioguideId": "C001123",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001123.jpg",
+                "billCount": 23,
+                "district": 31
+            },
+            {
+                "name": "Sherman, Brad",
+                "party": "D",
+                "bioguideId": "S000344",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000344.jpg",
+                "billCount": 224,
+                "district": 32
+            },
+            {
+                "name": "Aguilar, Pete",
+                "party": "D",
+                "bioguideId": "A000371",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000371.jpg",
+                "billCount": 89,
+                "district": 33
+            },
+            {
+                "name": "Gomez, Jimmy",
+                "party": "D",
+                "bioguideId": "G000585",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000585.jpg",
+                "billCount": 81,
+                "district": 34
+            },
+            {
+                "name": "Torres, Norma J.",
+                "party": "D",
+                "bioguideId": "T000474",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000474.jpg",
+                "billCount": 180,
+                "district": 35
+            },
+            {
+                "name": "Lieu, Ted",
+                "party": "D",
+                "bioguideId": "L000582",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000582.jpg",
+                "billCount": 257,
+                "district": 36
+            },
+            {
+                "name": "Kamlager-Dove, Sydney",
+                "party": "D",
+                "bioguideId": "K000400",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000400.jpg",
+                "billCount": 55,
+                "district": 37
+            },
+            {
+                "name": "S\u00e1nchez, Linda T.",
+                "party": "D",
+                "bioguideId": "S001156",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001156.jpg",
+                "billCount": 242,
+                "district": 38
+            },
+            {
+                "name": "Takano, Mark",
+                "party": "D",
+                "bioguideId": "T000472",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000472.jpg",
+                "billCount": 219,
+                "district": 39
+            },
+            {
+                "name": "Kim, Young",
+                "party": "R",
+                "bioguideId": "K000397",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000397.jpg",
+                "billCount": 92,
+                "district": 40
+            },
+            {
+                "name": "Calvert, Ken",
+                "party": "R",
+                "bioguideId": "C000059",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C000059.jpg",
+                "billCount": 279,
+                "district": 41
+            },
+            {
+                "name": "Garcia, Robert",
+                "party": "D",
+                "bioguideId": "G000598",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000598.jpg",
+                "billCount": 43,
+                "district": 42
+            },
+            {
+                "name": "Waters, Maxine",
+                "party": "D",
+                "bioguideId": "W000187",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000187.jpg",
+                "billCount": 603,
+                "district": 43
+            },
+            {
+                "name": "Barrag\u00e1n, Nanette Diaz",
+                "party": "D",
+                "bioguideId": "B001300",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001300.jpg",
+                "billCount": 118,
+                "district": 44
+            },
+            {
+                "name": "Tran, Derek",
+                "party": "D",
+                "bioguideId": "T000491",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/T/T000491.jpg",
+                "billCount": 7,
+                "district": 45
+            },
+            {
+                "name": "Correa, J. Luis",
+                "party": "D",
+                "bioguideId": "C001110",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001110.jpg",
+                "billCount": 115,
+                "district": 46
+            },
+            {
+                "name": "Min, Dave",
+                "party": "D",
+                "bioguideId": "M001241",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001241.jpg",
+                "billCount": 11,
+                "district": 47
+            },
+            {
+                "name": "Issa, Darrell",
+                "party": "R",
+                "bioguideId": "I000056",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/I000056.jpg",
+                "billCount": 385,
+                "district": 48
+            },
+            {
+                "name": "Levin, Mike",
+                "party": "D",
+                "bioguideId": "L000593",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000593.jpg",
+                "billCount": 113,
+                "district": 49
+            },
+            {
+                "name": "Peters, Scott H.",
+                "party": "D",
+                "bioguideId": "P000608",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000608.jpg",
+                "billCount": 228,
+                "district": 50
+            },
+            {
+                "name": "Jacobs, Sara",
+                "party": "D",
+                "bioguideId": "J000305",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000305.jpg",
+                "billCount": 66,
+                "district": 51
+            },
+            {
+                "name": "Vargas, Juan",
+                "party": "D",
+                "bioguideId": "V000130",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000130.jpg",
+                "billCount": 85,
+                "district": 52
+            }
+        ]
+    },
+    "Nebraska": {
+        "senators": [
+            {
+                "name": "Ricketts, Pete",
+                "party": "R",
+                "bioguideId": "R000618",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000618.jpg",
+                "billCount": 100
+            },
+            {
+                "name": "Fischer, Deb",
+                "party": "R",
+                "bioguideId": "F000463",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000463.jpg",
+                "billCount": 337
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Flood, Mike",
+                "party": "R",
+                "bioguideId": "F000474",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000474.jpg",
+                "billCount": 41,
+                "district": 1
+            },
+            {
+                "name": "Bacon, Don",
+                "party": "R",
+                "bioguideId": "B001298",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001298.jpg",
+                "billCount": 182,
+                "district": 2
+            },
+            {
+                "name": "Smith, Adrian",
+                "party": "R",
+                "bioguideId": "S001172",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001172.jpg",
+                "billCount": 133,
+                "district": 3
+            }
+        ]
+    },
+    "Nevada": {
+        "senators": [
+            {
+                "name": "Rosen, Jacky",
+                "party": "D",
+                "bioguideId": "R000608",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000608.jpg",
+                "billCount": 429
+            },
+            {
+                "name": "Cortez Masto, Catherine",
+                "party": "D",
+                "bioguideId": "C001113",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001113.jpg",
+                "billCount": 608
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Titus, Dina",
+                "party": "D",
+                "bioguideId": "T000468",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000468.jpg",
+                "billCount": 226,
+                "district": 1
+            },
+            {
+                "name": "Amodei, Mark E.",
+                "party": "R",
+                "bioguideId": "A000369",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000369.jpg",
+                "billCount": 105,
+                "district": 2
+            },
+            {
+                "name": "Lee, Susie",
+                "party": "D",
+                "bioguideId": "L000590",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000590.jpg",
+                "billCount": 87,
+                "district": 3
+            },
+            {
+                "name": "Horsford, Steven",
+                "party": "D",
+                "bioguideId": "H001066",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001066.jpg",
+                "billCount": 110,
+                "district": 4
+            }
+        ]
+    },
+    "Kentucky": {
+        "senators": [
+            {
+                "name": "Paul, Rand",
+                "party": "R",
+                "bioguideId": "P000603",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000603.jpg",
+                "billCount": 1081
+            },
+            {
+                "name": "McConnell, Mitch",
+                "party": "R",
+                "bioguideId": "M000355",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000355.jpg",
+                "billCount": 1294
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Comer, James",
+                "party": "R",
+                "bioguideId": "C001108",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001108.jpg",
+                "billCount": 47,
+                "district": 1
+            },
+            {
+                "name": "Guthrie, Brett",
+                "party": "R",
+                "bioguideId": "G000558",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000558.jpg",
+                "billCount": 133,
+                "district": 2
+            },
+            {
+                "name": "McGarvey, Morgan",
+                "party": "D",
+                "bioguideId": "M001220",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001220.jpg",
+                "billCount": 38,
+                "district": 3
+            },
+            {
+                "name": "Massie, Thomas",
+                "party": "R",
+                "bioguideId": "M001184",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001184.jpg",
+                "billCount": 111,
+                "district": 4
+            },
+            {
+                "name": "Rogers, Harold",
+                "party": "R",
+                "bioguideId": "R000395",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000395.jpg",
+                "billCount": 145,
+                "district": 5
+            },
+            {
+                "name": "Barr, Andy",
+                "party": "R",
+                "bioguideId": "B001282",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001282.jpg",
+                "billCount": 204,
+                "district": 6
+            }
+        ]
+    },
+    "Idaho": {
+        "senators": [
+            {
+                "name": "Risch, James E.",
+                "party": "R",
+                "bioguideId": "R000584",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000584.jpg",
+                "billCount": 627
+            },
+            {
+                "name": "Crapo, Mike",
+                "party": "R",
+                "bioguideId": "C000880",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C000880.jpg",
+                "billCount": 613
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Fulcher, Russ",
+                "party": "R",
+                "bioguideId": "F000469",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000469.jpg",
+                "billCount": 45,
+                "district": 1
+            },
+            {
+                "name": "Simpson, Michael K.",
+                "party": "R",
+                "bioguideId": "S001148",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001148.jpg",
+                "billCount": 159,
+                "district": 2
+            }
+        ]
+    },
+    "Oklahoma": {
+        "senators": [
+            {
+                "name": "Mullin, Markwayne",
+                "party": "R",
+                "bioguideId": "M001190",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001190.jpg",
+                "billCount": 158
+            },
+            {
+                "name": "Lankford, James",
+                "party": "R",
+                "bioguideId": "L000575",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000575.jpg",
+                "billCount": 643
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Hern, Kevin",
+                "party": "R",
+                "bioguideId": "H001082",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001082.jpg",
+                "billCount": 69,
+                "district": 1
+            },
+            {
+                "name": "Brecheen, Josh",
+                "party": "R",
+                "bioguideId": "B001317",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001317.jpg",
+                "billCount": 44,
+                "district": 2
+            },
+            {
+                "name": "Lucas, Frank D.",
+                "party": "R",
+                "bioguideId": "L000491",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000491.jpg",
+                "billCount": 121,
+                "district": 3
+            },
+            {
+                "name": "Cole, Tom",
+                "party": "R",
+                "bioguideId": "C001053",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001053.jpg",
+                "billCount": 220,
+                "district": 4
+            },
+            {
+                "name": "Bice, Stephanie I.",
+                "party": "R",
+                "bioguideId": "B000740",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B000740.jpg",
+                "billCount": 75,
+                "district": 5
+            }
+        ]
+    },
+    "Connecticut": {
+        "senators": [
+            {
+                "name": "Murphy, Christopher",
+                "party": "D",
+                "bioguideId": "M001169",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001169.jpg",
+                "billCount": 559
+            },
+            {
+                "name": "Blumenthal, Richard",
+                "party": "D",
+                "bioguideId": "B001277",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001277.jpg",
+                "billCount": 1033
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Larson, John B.",
+                "party": "D",
+                "bioguideId": "L000557",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000557.jpg",
+                "billCount": 251,
+                "district": 1
+            },
+            {
+                "name": "Courtney, Joe",
+                "party": "D",
+                "bioguideId": "C001069",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001069.jpg",
+                "billCount": 183,
+                "district": 2
+            },
+            {
+                "name": "DeLauro, Rosa L.",
+                "party": "D",
+                "bioguideId": "D000216",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000216.jpg",
+                "billCount": 626,
+                "district": 3
+            },
+            {
+                "name": "Himes, James A.",
+                "party": "D",
+                "bioguideId": "H001047",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001047.jpg",
+                "billCount": 109,
+                "district": 4
+            },
+            {
+                "name": "Hayes, Jahana",
+                "party": "D",
+                "bioguideId": "H001081",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001081.jpg",
+                "billCount": 116,
+                "district": 5
+            }
+        ]
+    },
+    "Washington": {
+        "senators": [
+            {
+                "name": "Murray, Patty",
+                "party": "D",
+                "bioguideId": "M001111",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001111.jpg",
+                "billCount": 1161
+            },
+            {
+                "name": "Cantwell, Maria",
+                "party": "D",
+                "bioguideId": "C000127",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C000127.jpg",
+                "billCount": 963
+            }
+        ],
+        "representatives": [
+            {
+                "name": "DelBene, Suzan K.",
+                "party": "D",
+                "bioguideId": "D000617",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000617.jpg",
+                "billCount": 146,
+                "district": 1
+            },
+            {
+                "name": "Larsen, Rick",
+                "party": "D",
+                "bioguideId": "L000560",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000560.jpg",
+                "billCount": 173,
+                "district": 2
+            },
+            {
+                "name": "Perez, Marie Gluesenkamp",
+                "party": "D",
+                "bioguideId": "G000600",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000600.jpg",
+                "billCount": 52,
+                "district": 3
+            },
+            {
+                "name": "Newhouse, Dan",
+                "party": "R",
+                "bioguideId": "N000189",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000189.jpg",
+                "billCount": 162,
+                "district": 4
+            },
+            {
+                "name": "Baumgartner, Michael",
+                "party": "R",
+                "bioguideId": "B001322",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001322.jpg",
+                "billCount": 12,
+                "district": 5
+            },
+            {
+                "name": "Randall, Emily",
+                "party": "D",
+                "bioguideId": "R000621",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/R/R000621.jpg",
+                "billCount": 8,
+                "district": 6
+            },
+            {
+                "name": "Jayapal, Pramila",
+                "party": "D",
+                "bioguideId": "J000298",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000298.jpg",
+                "billCount": 176,
+                "district": 7
+            },
+            {
+                "name": "Schrier, Kim",
+                "party": "D",
+                "bioguideId": "S001216",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001216.jpg",
+                "billCount": 95,
+                "district": 8
+            },
+            {
+                "name": "Smith, Adam",
+                "party": "D",
+                "bioguideId": "S000510",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000510.jpg",
+                "billCount": 232,
+                "district": 9
+            },
+            {
+                "name": "Strickland, Marilyn",
+                "party": "D",
+                "bioguideId": "S001159",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001159.jpg",
+                "billCount": 52,
+                "district": 10
+            }
+        ]
+    },
+    "Pennsylvania": {
+        "senators": [
+            {
+                "name": "McCormick, David",
+                "party": "R",
+                "bioguideId": "M001243",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001243.jpg",
+                "billCount": 30
+            },
+            {
+                "name": "Fetterman, John",
+                "party": "D",
+                "bioguideId": "F000479",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000479.jpg",
+                "billCount": 66
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Fitzpatrick, Brian K.",
+                "party": "R",
+                "bioguideId": "F000466",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000466.jpg",
+                "billCount": 231,
+                "district": 1
+            },
+            {
+                "name": "Boyle, Brendan F.",
+                "party": "D",
+                "bioguideId": "B001296",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001296.jpg",
+                "billCount": 126,
+                "district": 2
+            },
+            {
+                "name": "Evans, Dwight",
+                "party": "D",
+                "bioguideId": "E000296",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000296.jpg",
+                "billCount": 59,
+                "district": 3
+            },
+            {
+                "name": "Dean, Madeleine",
+                "party": "D",
+                "bioguideId": "D000631",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000631.jpg",
+                "billCount": 110,
+                "district": 4
+            },
+            {
+                "name": "Scanlon, Mary Gay",
+                "party": "D",
+                "bioguideId": "S001205",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001205.jpg",
+                "billCount": 103,
+                "district": 5
+            },
+            {
+                "name": "Houlahan, Chrissy",
+                "party": "D",
+                "bioguideId": "H001085",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001085.jpg",
+                "billCount": 107,
+                "district": 6
+            },
+            {
+                "name": "Mackenzie, Ryan",
+                "party": "R",
+                "bioguideId": "M001230",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001230.jpg",
+                "billCount": 8,
+                "district": 7
+            },
+            {
+                "name": "Bresnahan, Robert P.",
+                "party": "R",
+                "bioguideId": "B001327",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/B/B001327.jpg",
+                "billCount": 16,
+                "district": 8
+            },
+            {
+                "name": "Meuser, Daniel",
+                "party": "R",
+                "bioguideId": "M001204",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001204.jpg",
+                "billCount": 60,
+                "district": 9
+            },
+            {
+                "name": "Perry, Scott",
+                "party": "R",
+                "bioguideId": "P000605",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000605.jpg",
+                "billCount": 306,
+                "district": 10
+            },
+            {
+                "name": "Smucker, Lloyd",
+                "party": "R",
+                "bioguideId": "S001199",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001199.jpg",
+                "billCount": 102,
+                "district": 11
+            },
+            {
+                "name": "Lee, Summer L.",
+                "party": "D",
+                "bioguideId": "L000602",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/L/L000602.jpg",
+                "billCount": 32,
+                "district": 12
+            },
+            {
+                "name": "Joyce, John",
+                "party": "R",
+                "bioguideId": "J000302",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000302.jpg",
+                "billCount": 57,
+                "district": 13
+            },
+            {
+                "name": "Reschenthaler, Guy",
+                "party": "R",
+                "bioguideId": "R000610",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000610.jpg",
+                "billCount": 57,
+                "district": 14
+            },
+            {
+                "name": "Thompson, Glenn",
+                "party": "R",
+                "bioguideId": "T000467",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000467.jpg",
+                "billCount": 157,
+                "district": 15
+            },
+            {
+                "name": "Kelly, Mike",
+                "party": "R",
+                "bioguideId": "K000376",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000376.jpg",
+                "billCount": 177,
+                "district": 16
+            },
+            {
+                "name": "Deluzio, Christopher R.",
+                "party": "D",
+                "bioguideId": "D000530",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000530.jpg",
+                "billCount": 40,
+                "district": 17
+            }
+        ]
+    },
+    "Ohio": {
+        "senators": [
+            {
+                "name": "Moreno, Bernie",
+                "party": "R",
+                "bioguideId": "M001242",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001242.jpg",
+                "billCount": 25
+            },
+            {
+                "name": "Husted, Jon",
+                "party": "R",
+                "bioguideId": "H001104",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001104.jpg",
+                "billCount": 28
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Landsman, Greg",
+                "party": "D",
+                "bioguideId": "L000601",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/L/L000601.jpg",
+                "billCount": 33,
+                "district": 1
+            },
+            {
+                "name": "Taylor, David J.",
+                "party": "R",
+                "bioguideId": "T000490",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/T/T000490.jpg",
+                "billCount": 21,
+                "district": 2
+            },
+            {
+                "name": "Beatty, Joyce",
+                "party": "D",
+                "bioguideId": "B001281",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001281.jpg",
+                "billCount": 173,
+                "district": 3
+            },
+            {
+                "name": "Jordan, Jim",
+                "party": "R",
+                "bioguideId": "J000289",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000289.jpg",
+                "billCount": 55,
+                "district": 4
+            },
+            {
+                "name": "Latta, Robert E.",
+                "party": "R",
+                "bioguideId": "L000566",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000566.jpg",
+                "billCount": 232,
+                "district": 5
+            },
+            {
+                "name": "Rulli, Michael A.",
+                "party": "R",
+                "bioguideId": "R000619",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/R/R000619.jpg",
+                "billCount": 9,
+                "district": 6
+            },
+            {
+                "name": "Miller, Max L.",
+                "party": "R",
+                "bioguideId": "M001222",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001222.jpg",
+                "billCount": 32,
+                "district": 7
+            },
+            {
+                "name": "Davidson, Warren",
+                "party": "R",
+                "bioguideId": "D000626",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000626.jpg",
+                "billCount": 149,
+                "district": 8
+            },
+            {
+                "name": "Kaptur, Marcy",
+                "party": "D",
+                "bioguideId": "K000009",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000009.jpg",
+                "billCount": 504,
+                "district": 9
+            },
+            {
+                "name": "Turner, Michael R.",
+                "party": "R",
+                "bioguideId": "T000463",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000463.jpg",
+                "billCount": 188,
+                "district": 10
+            },
+            {
+                "name": "Brown, Shontel M.",
+                "party": "D",
+                "bioguideId": "B001313",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001313.jpg",
+                "billCount": 32,
+                "district": 11
+            },
+            {
+                "name": "Balderson, Troy",
+                "party": "R",
+                "bioguideId": "B001306",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001306.jpg",
+                "billCount": 58,
+                "district": 12
+            },
+            {
+                "name": "Sykes, Emilia Strong",
+                "party": "D",
+                "bioguideId": "S001223",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001223.jpg",
+                "billCount": 53,
+                "district": 13
+            },
+            {
+                "name": "Joyce, David P.",
+                "party": "R",
+                "bioguideId": "J000295",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000295.jpg",
+                "billCount": 135,
+                "district": 14
+            },
+            {
+                "name": "Carey, Mike",
+                "party": "R",
+                "bioguideId": "C001126",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001126.jpg",
+                "billCount": 48,
+                "district": 15
+            }
+        ]
+    },
+    "Kansas": {
+        "senators": [
+            {
+                "name": "Moran, Jerry",
+                "party": "R",
+                "bioguideId": "M000934",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000934.jpg",
+                "billCount": 752
+            },
+            {
+                "name": "Marshall, Roger",
+                "party": "R",
+                "bioguideId": "M001198",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001198.jpg",
+                "billCount": 488
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Mann, Tracey",
+                "party": "R",
+                "bioguideId": "M000871",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M000871.jpg",
+                "billCount": 64,
+                "district": 1
+            },
+            {
+                "name": "Schmidt, Derek",
+                "party": "R",
+                "bioguideId": "S001228",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/S/S001228.jpg",
+                "billCount": 7,
+                "district": 2
+            },
+            {
+                "name": "Davids, Sharice",
+                "party": "D",
+                "bioguideId": "D000629",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000629.jpg",
+                "billCount": 57,
+                "district": 3
+            },
+            {
+                "name": "Estes, Ron",
+                "party": "R",
+                "bioguideId": "E000298",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000298.jpg",
+                "billCount": 60,
+                "district": 4
+            }
+        ]
+    },
+    "Utah": {
+        "senators": [
+            {
+                "name": "Lee, Mike",
+                "party": "R",
+                "bioguideId": "L000577",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000577.jpg",
+                "billCount": 2040
+            },
+            {
+                "name": "Curtis, John R.",
+                "party": "R",
+                "bioguideId": "C001114",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001114.jpg",
+                "billCount": 181
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Moore, Blake D.",
+                "party": "R",
+                "bioguideId": "M001213",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001213.jpg",
+                "billCount": 78,
+                "district": 1
+            },
+            {
+                "name": "Maloy, Celeste",
+                "party": "R",
+                "bioguideId": "M001228",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001228.jpg",
+                "billCount": 32,
+                "district": 2
+            },
+            {
+                "name": "Kennedy, Mike",
+                "party": "R",
+                "bioguideId": "K000403",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/K/K000403.jpg",
+                "billCount": 24,
+                "district": 3
+            },
+            {
+                "name": "Owens, Burgess",
+                "party": "R",
+                "bioguideId": "O000086",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/O000086.jpg",
+                "billCount": 52,
+                "district": 4
+            }
+        ]
+    },
+    "Wyoming": {
+        "senators": [
+            {
+                "name": "Lummis, Cynthia M.",
+                "party": "R",
+                "bioguideId": "L000571",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000571.jpg",
+                "billCount": 232
+            },
+            {
+                "name": "Barrasso, John",
+                "party": "R",
+                "bioguideId": "B001261",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001261.jpg",
+                "billCount": 687
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Hageman, Harriet M.",
+                "party": "R",
+                "bioguideId": "H001096",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001096.jpg",
+                "billCount": 116,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "New Mexico": {
+        "senators": [
+            {
+                "name": "Luj\u00e1n, Ben Ray",
+                "party": "D",
+                "bioguideId": "L000570",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000570.jpg",
+                "billCount": 454
+            },
+            {
+                "name": "Heinrich, Martin",
+                "party": "D",
+                "bioguideId": "H001046",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001046.jpg",
+                "billCount": 524
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Stansbury, Melanie A.",
+                "party": "D",
+                "bioguideId": "S001218",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001218.jpg",
+                "billCount": 46,
+                "district": 1
+            },
+            {
+                "name": "Vasquez, Gabe",
+                "party": "D",
+                "bioguideId": "V000136",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000136.jpg",
+                "billCount": 54,
+                "district": 2
+            },
+            {
+                "name": "Leger Fernandez, Teresa",
+                "party": "D",
+                "bioguideId": "L000273",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000273.jpg",
+                "billCount": 92,
+                "district": 3
+            }
+        ]
+    },
+    "West Virginia": {
+        "senators": [
+            {
+                "name": "Justice, James C.",
+                "party": "R",
+                "bioguideId": "J000312",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/J/J000312.jpg",
+                "billCount": 6
+            },
+            {
+                "name": "Capito, Shelley Moore",
+                "party": "R",
+                "bioguideId": "C001047",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001047.jpg",
+                "billCount": 385
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Miller, Carol D.",
+                "party": "R",
+                "bioguideId": "M001205",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001205.jpg",
+                "billCount": 89,
+                "district": 1
+            },
+            {
+                "name": "Moore, Riley M.",
+                "party": "R",
+                "bioguideId": "M001235",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001235.jpg",
+                "billCount": 12,
+                "district": 2
+            }
+        ]
+    },
+    "New Jersey": {
+        "senators": [
+            {
+                "name": "Kim, Andy",
+                "party": "D",
+                "bioguideId": "K000394",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000394.jpg",
+                "billCount": 158
+            },
+            {
+                "name": "Booker, Cory A.",
+                "party": "D",
+                "bioguideId": "B001288",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/original/B001288.jpg",
+                "billCount": 932
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Norcross, Donald",
+                "party": "D",
+                "bioguideId": "N000188",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000188.jpg",
+                "billCount": 102,
+                "district": 1
+            },
+            {
+                "name": "Van Drew, Jefferson",
+                "party": "R",
+                "bioguideId": "V000133",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000133.jpg",
+                "billCount": 162,
+                "district": 2
+            },
+            {
+                "name": "Conaway, Herbert C.",
+                "party": "D",
+                "bioguideId": "C001136",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/C/C001136.jpg",
+                "billCount": 9,
+                "district": 3
+            },
+            {
+                "name": "Smith, Christopher H.",
+                "party": "R",
+                "bioguideId": "S000522",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000522.jpg",
+                "billCount": 929,
+                "district": 4
+            },
+            {
+                "name": "Gottheimer, Josh",
+                "party": "D",
+                "bioguideId": "G000583",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000583.jpg",
+                "billCount": 176,
+                "district": 5
+            },
+            {
+                "name": "Pallone, Frank",
+                "party": "D",
+                "bioguideId": "P000034",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000034.jpg",
+                "billCount": 574,
+                "district": 6
+            },
+            {
+                "name": "Kean, Thomas H.",
+                "party": "R",
+                "bioguideId": "K000398",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000398.jpg",
+                "billCount": 46,
+                "district": 7
+            },
+            {
+                "name": "Menendez, Robert",
+                "party": "D",
+                "bioguideId": "M001226",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001226.jpg",
+                "billCount": 25,
+                "district": 8
+            },
+            {
+                "name": "Pou, Nellie",
+                "party": "D",
+                "bioguideId": "P000621",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/P/P000621.jpg",
+                "billCount": 6,
+                "district": 9
+            },
+            {
+                "name": "McIver, LaMonica",
+                "party": "D",
+                "bioguideId": "M001229",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001229.jpg",
+                "billCount": 8,
+                "district": 10
+            },
+            {
+                "name": "Watson Coleman, Bonnie",
+                "party": "D",
+                "bioguideId": "W000822",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000822.jpg",
+                "billCount": 182,
+                "district": 12
+            }
+        ]
+    },
+    "Louisiana": {
+        "senators": [
+            {
+                "name": "Kennedy, John",
+                "party": "R",
+                "bioguideId": "K000393",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000393.jpg",
+                "billCount": 639
+            },
+            {
+                "name": "Cassidy, Bill",
+                "party": "R",
+                "bioguideId": "C001075",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001075.jpg",
+                "billCount": 675
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Scalise, Steve",
+                "party": "R",
+                "bioguideId": "S001176",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001176.jpg",
+                "billCount": 110,
+                "district": 1
+            },
+            {
+                "name": "Carter, Troy A.",
+                "party": "D",
+                "bioguideId": "C001125",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001125.jpg",
+                "billCount": 54,
+                "district": 2
+            },
+            {
+                "name": "Higgins, Clay",
+                "party": "R",
+                "bioguideId": "H001077",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001077.jpg",
+                "billCount": 153,
+                "district": 3
+            },
+            {
+                "name": "Johnson, Mike",
+                "party": "R",
+                "bioguideId": "J000299",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000299.jpg",
+                "billCount": 74,
+                "district": 4
+            },
+            {
+                "name": "Letlow, Julia",
+                "party": "R",
+                "bioguideId": "L000595",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000595.jpg",
+                "billCount": 21,
+                "district": 5
+            },
+            {
+                "name": "Fields, Cleo",
+                "party": "D",
+                "bioguideId": "F000110",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/F/F000110.jpg",
+                "billCount": 22,
+                "district": 6
+            }
+        ]
+    },
+    "Maine": {
+        "senators": [
+            {
+                "name": "King, Angus S., Jr.",
+                "party": "I",
+                "bioguideId": "K000383",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000383.jpg",
+                "billCount": 452
+            },
+            {
+                "name": "Collins, Susan M.",
+                "party": "R",
+                "bioguideId": "C001035",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001035.jpg",
+                "billCount": 1183
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Pingree, Chellie",
+                "party": "D",
+                "bioguideId": "P000597",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000597.jpg",
+                "billCount": 173,
+                "district": 1
+            },
+            {
+                "name": "Golden, Jared F.",
+                "party": "D",
+                "bioguideId": "G000592",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000592.jpg",
+                "billCount": 86,
+                "district": 2
+            }
+        ]
+    },
+    "Wisconsin": {
+        "senators": [
+            {
+                "name": "Johnson, Ron",
+                "party": "R",
+                "bioguideId": "J000293",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000293.jpg",
+                "billCount": 593
+            },
+            {
+                "name": "Baldwin, Tammy",
+                "party": "D",
+                "bioguideId": "B001230",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001230.jpg",
+                "billCount": 715
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Steil, Bryan",
+                "party": "R",
+                "bioguideId": "S001213",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001213.jpg",
+                "billCount": 87,
+                "district": 1
+            },
+            {
+                "name": "Pocan, Mark",
+                "party": "D",
+                "bioguideId": "P000607",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000607.jpg",
+                "billCount": 163,
+                "district": 2
+            },
+            {
+                "name": "Van Orden, Derrick",
+                "party": "R",
+                "bioguideId": "V000135",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000135.jpg",
+                "billCount": 56,
+                "district": 3
+            },
+            {
+                "name": "Moore, Gwen",
+                "party": "D",
+                "bioguideId": "M001160",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001160.jpg",
+                "billCount": 271,
+                "district": 4
+            },
+            {
+                "name": "Fitzgerald, Scott",
+                "party": "R",
+                "bioguideId": "F000471",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000471.jpg",
+                "billCount": 67,
+                "district": 5
+            },
+            {
+                "name": "Grothman, Glenn",
+                "party": "R",
+                "bioguideId": "G000576",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000576.jpg",
+                "billCount": 170,
+                "district": 6
+            },
+            {
+                "name": "Tiffany, Thomas P.",
+                "party": "R",
+                "bioguideId": "T000165",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/T000165.jpg",
+                "billCount": 67,
+                "district": 7
+            },
+            {
+                "name": "Wied, Tony",
+                "party": "R",
+                "bioguideId": "W000829",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/W/W000829.jpg",
+                "billCount": 14,
+                "district": 8
+            }
+        ]
+    },
+    "Colorado": {
+        "senators": [
+            {
+                "name": "Hickenlooper, John W.",
+                "party": "D",
+                "bioguideId": "H000273",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H000273.jpg",
+                "billCount": 202
+            },
+            {
+                "name": "Bennet, Michael F.",
+                "party": "D",
+                "bioguideId": "B001267",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001267.jpg",
+                "billCount": 837
+            }
+        ],
+        "representatives": [
+            {
+                "name": "DeGette, Diana",
+                "party": "D",
+                "bioguideId": "D000197",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000197.jpg",
+                "billCount": 244,
+                "district": 1
+            },
+            {
+                "name": "Neguse, Joe",
+                "party": "D",
+                "bioguideId": "N000191",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000191.jpg",
+                "billCount": 336,
+                "district": 2
+            },
+            {
+                "name": "Hurd, Jeff",
+                "party": "R",
+                "bioguideId": "H001100",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001100.jpg",
+                "billCount": 14,
+                "district": 3
+            },
+            {
+                "name": "Boebert, Lauren",
+                "party": "R",
+                "bioguideId": "B000825",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B000825.jpg",
+                "billCount": 146,
+                "district": 4
+            },
+            {
+                "name": "Crank, Jeff",
+                "party": "R",
+                "bioguideId": "C001137",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/C/C001137.jpg",
+                "billCount": 4,
+                "district": 5
+            },
+            {
+                "name": "Crow, Jason",
+                "party": "D",
+                "bioguideId": "C001121",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001121.jpg",
+                "billCount": 152,
+                "district": 6
+            },
+            {
+                "name": "Pettersen, Brittany",
+                "party": "D",
+                "bioguideId": "P000620",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000620.jpg",
+                "billCount": 46,
+                "district": 7
+            },
+            {
+                "name": "Evans, Gabe",
+                "party": "R",
+                "bioguideId": "E000300",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/E/E000300.jpg",
+                "billCount": 15,
+                "district": 8
+            }
+        ]
+    },
+    "North Dakota": {
+        "senators": [
+            {
+                "name": "Hoeven, John",
+                "party": "R",
+                "bioguideId": "H001061",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001061.jpg",
+                "billCount": 490
+            },
+            {
+                "name": "Cramer, Kevin",
+                "party": "R",
+                "bioguideId": "C001096",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001096.jpg",
+                "billCount": 237
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Fedorchak, Julie",
+                "party": "R",
+                "bioguideId": "F000482",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/F/F000482.jpg",
+                "billCount": 11,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Tennessee": {
+        "senators": [
+            {
+                "name": "Hagerty, Bill",
+                "party": "R",
+                "bioguideId": "H000601",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H000601.jpg",
+                "billCount": 313
+            },
+            {
+                "name": "Blackburn, Marsha",
+                "party": "R",
+                "bioguideId": "B001243",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001243.jpg",
+                "billCount": 743
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Harshbarger, Diana",
+                "party": "R",
+                "bioguideId": "H001086",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001086.jpg",
+                "billCount": 64,
+                "district": 1
+            },
+            {
+                "name": "Burchett, Tim",
+                "party": "R",
+                "bioguideId": "B001309",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001309.jpg",
+                "billCount": 127,
+                "district": 2
+            },
+            {
+                "name": "Fleischmann, Charles J. \"Chuck\"",
+                "party": "R",
+                "bioguideId": "F000459",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000459.jpg",
+                "billCount": 49,
+                "district": 3
+            },
+            {
+                "name": "DesJarlais, Scott",
+                "party": "R",
+                "bioguideId": "D000616",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000616.jpg",
+                "billCount": 52,
+                "district": 4
+            },
+            {
+                "name": "Ogles, Andrew",
+                "party": "R",
+                "bioguideId": "O000175",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/O000175.jpg",
+                "billCount": 191,
+                "district": 5
+            },
+            {
+                "name": "Rose, John W.",
+                "party": "R",
+                "bioguideId": "R000612",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000612.jpg",
+                "billCount": 42,
+                "district": 6
+            },
+            {
+                "name": "Kustoff, David",
+                "party": "R",
+                "bioguideId": "K000392",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000392.jpg",
+                "billCount": 102,
+                "district": 8
+            },
+            {
+                "name": "Cohen, Steve",
+                "party": "D",
+                "bioguideId": "C001068",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001068.jpg",
+                "billCount": 481,
+                "district": 9
+            }
+        ]
+    },
+    "Iowa": {
+        "senators": [
+            {
+                "name": "Grassley, Chuck",
+                "party": "R",
+                "bioguideId": "G000386",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000386.jpg",
+                "billCount": 2442
+            },
+            {
+                "name": "Ernst, Joni",
+                "party": "R",
+                "bioguideId": "E000295",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000295.jpg",
+                "billCount": 632
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Miller-Meeks, Mariannette",
+                "party": "R",
+                "bioguideId": "M001215",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001215.jpg",
+                "billCount": 115,
+                "district": 1
+            },
+            {
+                "name": "Hinson, Ashley",
+                "party": "R",
+                "bioguideId": "H001091",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001091.jpg",
+                "billCount": 78,
+                "district": 2
+            },
+            {
+                "name": "Nunn, Zachary",
+                "party": "R",
+                "bioguideId": "N000193",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000193.jpg",
+                "billCount": 107,
+                "district": 3
+            },
+            {
+                "name": "Feenstra, Randy",
+                "party": "R",
+                "bioguideId": "F000446",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000446.jpg",
+                "billCount": 97,
+                "district": 4
+            }
+        ]
+    },
+    "Texas": {
+        "senators": [
+            {
+                "name": "Cruz, Ted",
+                "party": "R",
+                "bioguideId": "C001098",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001098.jpg",
+                "billCount": 1074
+            },
+            {
+                "name": "Cornyn, John",
+                "party": "R",
+                "bioguideId": "C001056",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001056.jpg",
+                "billCount": 1568
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Moran, Nathaniel",
+                "party": "R",
+                "bioguideId": "M001224",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001224.jpg",
+                "billCount": 35,
+                "district": 1
+            },
+            {
+                "name": "Crenshaw, Dan",
+                "party": "R",
+                "bioguideId": "C001120",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001120.jpg",
+                "billCount": 92,
+                "district": 2
+            },
+            {
+                "name": "Self, Keith",
+                "party": "R",
+                "bioguideId": "S001224",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001224.jpg",
+                "billCount": 61,
+                "district": 3
+            },
+            {
+                "name": "Fallon, Pat",
+                "party": "R",
+                "bioguideId": "F000246",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000246.jpg",
+                "billCount": 58,
+                "district": 4
+            },
+            {
+                "name": "Gooden, Lance",
+                "party": "R",
+                "bioguideId": "G000589",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000589.jpg",
+                "billCount": 61,
+                "district": 5
+            },
+            {
+                "name": "Ellzey, Jake",
+                "party": "R",
+                "bioguideId": "E000071",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000071.jpg",
+                "billCount": 11,
+                "district": 6
+            },
+            {
+                "name": "Fletcher, Lizzie",
+                "party": "D",
+                "bioguideId": "F000468",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000468.jpg",
+                "billCount": 56,
+                "district": 7
+            },
+            {
+                "name": "Luttrell, Morgan",
+                "party": "R",
+                "bioguideId": "L000603",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000603.jpg",
+                "billCount": 41,
+                "district": 8
+            },
+            {
+                "name": "Green, Al",
+                "party": "D",
+                "bioguideId": "G000553",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000553.jpg",
+                "billCount": 352,
+                "district": 9
+            },
+            {
+                "name": "McCaul, Michael T.",
+                "party": "R",
+                "bioguideId": "M001157",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001157.jpg",
+                "billCount": 253,
+                "district": 10
+            },
+            {
+                "name": "Pfluger, August",
+                "party": "R",
+                "bioguideId": "P000048",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000048.jpg",
+                "billCount": 146,
+                "district": 11
+            },
+            {
+                "name": "Goldman, Craig A.",
+                "party": "R",
+                "bioguideId": "G000601",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/G/G000601.jpg",
+                "billCount": 6,
+                "district": 12
+            },
+            {
+                "name": "Jackson, Ronny",
+                "party": "R",
+                "bioguideId": "J000304",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/J000304.jpg",
+                "billCount": 92,
+                "district": 13
+            },
+            {
+                "name": "Weber, Randy K. Sr.",
+                "party": "R",
+                "bioguideId": "W000814",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000814.jpg",
+                "billCount": 99,
+                "district": 14
+            },
+            {
+                "name": "De La Cruz, Monica",
+                "party": "R",
+                "bioguideId": "D000594",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000594.jpg",
+                "billCount": 54,
+                "district": 15
+            },
+            {
+                "name": "Escobar, Veronica",
+                "party": "D",
+                "bioguideId": "E000299",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/E000299.jpg",
+                "billCount": 71,
+                "district": 16
+            },
+            {
+                "name": "Sessions, Pete",
+                "party": "R",
+                "bioguideId": "S000250",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S000250.jpg",
+                "billCount": 449,
+                "district": 17
+            },
+            {
+                "name": "Arrington, Jodey C.",
+                "party": "R",
+                "bioguideId": "A000375",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/A000375.jpg",
+                "billCount": 181,
+                "district": 19
+            },
+            {
+                "name": "Castro, Joaquin",
+                "party": "D",
+                "bioguideId": "C001091",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001091.jpg",
+                "billCount": 177,
+                "district": 20
+            },
+            {
+                "name": "Roy, Chip",
+                "party": "R",
+                "bioguideId": "R000614",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000614.jpg",
+                "billCount": 205,
+                "district": 21
+            },
+            {
+                "name": "Nehls, Troy E.",
+                "party": "R",
+                "bioguideId": "N000026",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000026.jpg",
+                "billCount": 81,
+                "district": 22
+            },
+            {
+                "name": "Gonzales, Tony",
+                "party": "R",
+                "bioguideId": "G000594",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000594.jpg",
+                "billCount": 83,
+                "district": 23
+            },
+            {
+                "name": "Van Duyne, Beth",
+                "party": "R",
+                "bioguideId": "V000134",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000134.jpg",
+                "billCount": 101,
+                "district": 24
+            },
+            {
+                "name": "Williams, Roger",
+                "party": "R",
+                "bioguideId": "W000816",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/W000816.jpg",
+                "billCount": 135,
+                "district": 25
+            },
+            {
+                "name": "Gill, Brandon",
+                "party": "R",
+                "bioguideId": "G000603",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/G/G000603.jpg",
+                "billCount": 17,
+                "district": 26
+            },
+            {
+                "name": "Cloud, Michael",
+                "party": "R",
+                "bioguideId": "C001115",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001115.jpg",
+                "billCount": 68,
+                "district": 27
+            },
+            {
+                "name": "Cuellar, Henry",
+                "party": "D",
+                "bioguideId": "C001063",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001063.jpg",
+                "billCount": 121,
+                "district": 28
+            },
+            {
+                "name": "Garcia, Sylvia R.",
+                "party": "D",
+                "bioguideId": "G000587",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000587.jpg",
+                "billCount": 77,
+                "district": 29
+            },
+            {
+                "name": "Crockett, Jasmine",
+                "party": "D",
+                "bioguideId": "C001130",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001130.jpg",
+                "billCount": 40,
+                "district": 30
+            },
+            {
+                "name": "Carter, John R.",
+                "party": "R",
+                "bioguideId": "C001051",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001051.jpg",
+                "billCount": 140,
+                "district": 31
+            },
+            {
+                "name": "Johnson, Julie",
+                "party": "D",
+                "bioguideId": "J000310",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/J/J000310.jpg",
+                "billCount": 13,
+                "district": 32
+            },
+            {
+                "name": "Veasey, Marc A.",
+                "party": "D",
+                "bioguideId": "V000131",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/V000131.jpg",
+                "billCount": 122,
+                "district": 33
+            },
+            {
+                "name": "Gonzalez, Vicente",
+                "party": "D",
+                "bioguideId": "G000581",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000581.jpg",
+                "billCount": 48,
+                "district": 34
+            },
+            {
+                "name": "Casar, Greg",
+                "party": "D",
+                "bioguideId": "C001131",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001131.jpg",
+                "billCount": 10,
+                "district": 35
+            },
+            {
+                "name": "Babin, Brian",
+                "party": "R",
+                "bioguideId": "B001291",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001291.jpg",
+                "billCount": 99,
+                "district": 36
+            },
+            {
+                "name": "Doggett, Lloyd",
+                "party": "D",
+                "bioguideId": "D000399",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000399.jpg",
+                "billCount": 258,
+                "district": 37
+            },
+            {
+                "name": "Hunt, Wesley",
+                "party": "R",
+                "bioguideId": "H001095",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/H001095.jpg",
+                "billCount": 20,
+                "district": 38
+            }
+        ]
+    },
+    "Illinois": {
+        "senators": [
+            {
+                "name": "Duckworth, Tammy",
+                "party": "D",
+                "bioguideId": "D000622",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000622.jpg",
+                "billCount": 525
+            },
+            {
+                "name": "Durbin, Richard J.",
+                "party": "D",
+                "bioguideId": "D000563",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000563.jpg",
+                "billCount": 2068
+            }
+        ],
+        "representatives": [
+            {
+                "name": "Jackson, Jonathan L.",
+                "party": "D",
+                "bioguideId": "J000309",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/J/J000309.jpg",
+                "billCount": 11,
+                "district": 1
+            },
+            {
+                "name": "Kelly, Robin L.",
+                "party": "D",
+                "bioguideId": "K000385",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000385.jpg",
+                "billCount": 150,
+                "district": 2
+            },
+            {
+                "name": "Ramirez, Delia C.",
+                "party": "D",
+                "bioguideId": "R000617",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000617.jpg",
+                "billCount": 34,
+                "district": 3
+            },
+            {
+                "name": "Garc\u00eda, Jes\u00fas G. \"Chuy\"",
+                "party": "D",
+                "bioguideId": "G000586",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/G000586.jpg",
+                "billCount": 66,
+                "district": 4
+            },
+            {
+                "name": "Quigley, Mike",
+                "party": "D",
+                "bioguideId": "Q000023",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/Q000023.jpg",
+                "billCount": 189,
+                "district": 5
+            },
+            {
+                "name": "Casten, Sean",
+                "party": "D",
+                "bioguideId": "C001117",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001117.jpg",
+                "billCount": 124,
+                "district": 6
+            },
+            {
+                "name": "Davis, Danny K.",
+                "party": "D",
+                "bioguideId": "D000096",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/D000096.jpg",
+                "billCount": 399,
+                "district": 7
+            },
+            {
+                "name": "Krishnamoorthi, Raja",
+                "party": "D",
+                "bioguideId": "K000391",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/K000391.jpg",
+                "billCount": 151,
+                "district": 8
+            },
+            {
+                "name": "Schakowsky, Janice D.",
+                "party": "D",
+                "bioguideId": "S001145",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001145.jpg",
+                "billCount": 445,
+                "district": 9
+            },
+            {
+                "name": "Schneider, Bradley Scott",
+                "party": "D",
+                "bioguideId": "S001190",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001190.jpg",
+                "billCount": 211,
+                "district": 10
+            },
+            {
+                "name": "Foster, Bill",
+                "party": "D",
+                "bioguideId": "F000454",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/F000454.jpg",
+                "billCount": 262,
+                "district": 11
+            },
+            {
+                "name": "Bost, Mike",
+                "party": "R",
+                "bioguideId": "B001295",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001295.jpg",
+                "billCount": 134,
+                "district": 12
+            },
+            {
+                "name": "Budzinski, Nikki",
+                "party": "D",
+                "bioguideId": "B001315",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001315.jpg",
+                "billCount": 28,
+                "district": 13
+            },
+            {
+                "name": "Underwood, Lauren",
+                "party": "D",
+                "bioguideId": "U000040",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/U000040.jpg",
+                "billCount": 113,
+                "district": 14
+            },
+            {
+                "name": "Miller, Mary E.",
+                "party": "R",
+                "bioguideId": "M001211",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001211.jpg",
+                "billCount": 75,
+                "district": 15
+            },
+            {
+                "name": "LaHood, Darin",
+                "party": "R",
+                "bioguideId": "L000585",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/L000585.jpg",
+                "billCount": 129,
+                "district": 16
+            },
+            {
+                "name": "Sorensen, Eric",
+                "party": "D",
+                "bioguideId": "S001225",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/S001225.jpg",
+                "billCount": 19,
+                "district": 17
+            }
+        ]
+    },
+    "Delaware": {
+        "senators": [
+            {
+                "name": "Coons, Christopher A.",
+                "party": "D",
+                "bioguideId": "C001088",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/C001088.jpg",
+                "billCount": 742
+            },
+            {
+                "name": "Blunt Rochester, Lisa",
+                "party": "D",
+                "bioguideId": "B001303",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/B001303.jpg",
+                "billCount": 165
+            }
+        ],
+        "representatives": [
+            {
+                "name": "McBride, Sarah",
+                "party": "D",
+                "bioguideId": "M001238",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/M/M001238.jpg",
+                "billCount": 4,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Puerto Rico": {
+        "senators": [],
+        "representatives": [
+            {
+                "name": "Hern\u00e1ndez, Pablo Jose",
+                "party": "D",
+                "bioguideId": "H001103",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/H/H001103.jpg",
+                "billCount": 18,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Northern Mariana Islands": {
+        "senators": [],
+        "representatives": [
+            {
+                "name": "King-Hinds, Kimberlyn",
+                "party": "R",
+                "bioguideId": "K000404",
+                "photoUrl": "https://bioguide.congress.gov/bioguide/photo/K/K000404.jpg",
+                "billCount": 10,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Guam": {
+        "senators": [],
+        "representatives": [
+            {
+                "name": "Moylan, James C.",
+                "party": "R",
+                "bioguideId": "M001219",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/M001219.jpg",
+                "billCount": 49,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "Virgin Islands": {
+        "senators": [],
+        "representatives": [
+            {
+                "name": "Plaskett, Stacey E.",
+                "party": "D",
+                "bioguideId": "P000610",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/P000610.jpg",
+                "billCount": 133,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "American Samoa": {
+        "senators": [],
+        "representatives": [
+            {
+                "name": "Radewagen, Aumua Amata Coleman",
+                "party": "R",
+                "bioguideId": "R000600",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/R000600.jpg",
+                "billCount": 44,
+                "district": "At-Large"
+            }
+        ]
+    },
+    "District of Columbia": {
+        "senators": [],
+        "representatives": [
+            {
+                "name": "Norton, Eleanor Holmes",
+                "party": "D",
+                "bioguideId": "N000147",
+                "photoUrl": "https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/N000147.jpg",
+                "billCount": 1102,
+                "district": "At-Large"
+            }
+        ]
+    }
+};
+        let currentState = null;
+        let currentPartyFilter = 'all';
+        let currentSortBy = 'district';
+
+        const width = document.getElementById('map-container').clientWidth;
+        const height = 600;
+
+        const svg = d3.select("#map")
+            .attr("width", width)
+            .attr("height", height);
+
+        const g = svg.append("g");
+
+        const projection = d3.geoAlbersUsa()
+            .scale(width * 1.3)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+        
+        // Zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        // Zoom controls
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            svg.transition().call(zoom.scaleBy, 1.5);
+        });
+        
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            svg.transition().call(zoom.scaleBy, 0.67);
+        });
+        
+        document.getElementById('zoom-reset').addEventListener('click', () => {
+            svg.transition().call(zoom.transform, d3.zoomIdentity);
+        });
+        
+        // Filter and sort controls
+        document.getElementById('party-filter').addEventListener('change', (e) => {
+            currentPartyFilter = e.target.value;
+            if (currentState) {
+                showStateInfo(currentState);
+            }
+        });
+        
+        document.getElementById('sort-by').addEventListener('change', (e) => {
+            currentSortBy = e.target.value;
+            if (currentState) {
+                showStateInfo(currentState);
+            }
+        });
+
+        d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(us => {
+            const states = topojson.feature(us, us.objects.states);
+            
+            g.selectAll(".state")
+                .data(states.features)
+                .enter().append("path")
+                .attr("class", "state")
+                .attr("d", path)
+                .on("click", function(event, d) {
+                    g.selectAll(".state").classed("selected", false);
+                    d3.select(this).classed("selected", true);
+                    currentState = d.properties.name;
+                    showStateInfo(d.properties.name);
+                });
+            
+            g.selectAll(".state-label")
+                .data(states.features)
+                .enter().append("text")
+                .attr("class", "state-label")
+                .attr("transform", d => `translate(${path.centroid(d)})`)
+                .attr("text-anchor", "middle")
+                .attr("font-size", "10px")
+                .attr("fill", "#666")
+                .attr("pointer-events", "none")
+                .text(d => {
+                    const abbr = getStateAbbr(d.properties.name);
+                    return abbr;
+                });
+        });
+
+        function filterMembers(members) {
+            if (currentPartyFilter === 'all') {
+                return members;
+            }
+            const partyMap = {
+                'Democrat': 'D',
+                'Republican': 'R',
+                'Independent': 'I'
+            };
+            return members.filter(m => m.party === partyMap[currentPartyFilter]);
+        }
+        
+        function sortMembers(members, isRepresentatives) {
+            const sorted = [...members];
+            
+            if (currentSortBy === 'name') {
+                sorted.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (currentSortBy === 'billCount') {
+                sorted.sort((a, b) => b.billCount - a.billCount);
+            } else if (currentSortBy === 'district' && isRepresentatives) {
+                sorted.sort((a, b) => {
+                    const aVal = a.district === 'At-Large' ? 999 : a.district;
+                    const bVal = b.district === 'At-Large' ? 999 : b.district;
+                    return aVal - bVal;
+                });
+            }
+            
+            return sorted;
+        }
+
+        function showStateInfo(stateName) {
+            const panel = document.getElementById('info-panel');
+            const data = congressData[stateName];
+            
+            if (!data) {
+                panel.innerHTML = `
+                    <div class="info-header">${stateName}</div>
+                    <div class="placeholder">No congressional data available for this state.</div>
+                `;
+                return;
+            }
+            
+            let html = `<div class="info-header">${stateName}</div>`;
+            
+            // Filter and sort senators
+            let senators = filterMembers(data.senators);
+            senators = sortMembers(senators, false);
+            
+            html += `<div class="rep-section">
+                <h3>Senators (${senators.length})</h3>
+                <div class="rep-list">`;
+            
+            if (senators.length === 0) {
+                html += `<div class="placeholder">No senators match the current filter.</div>`;
+            } else {
+                senators.forEach(senator => {
+                    const partyClass = senator.party.toLowerCase();
+                    const photoHtml = senator.photoUrl ? 
+                        `<img src="${senator.photoUrl}" alt="${senator.name}" class="rep-photo">` :
+                        `<div class="rep-photo"></div>`;
+                    
+                    html += `
+                        <div class="rep-item ${partyClass}">
+                            ${photoHtml}
+                            <div class="rep-info">
+                                <div class="rep-name">${senator.name}</div>
+                                <div class="rep-details">${senator.party} • ${senator.billCount} bills</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `</div></div>`;
+            
+            // Filter and sort representatives
+            let representatives = filterMembers(data.representatives);
+            representatives = sortMembers(representatives, true);
+            
+            html += `<div class="rep-section">
+                <h3>Representatives (${representatives.length})</h3>
+                <div class="rep-list">`;
+            
+            if (representatives.length === 0) {
+                html += `<div class="placeholder">No representatives match the current filter.</div>`;
+            } else {
+                representatives.forEach(rep => {
+                    const partyClass = rep.party.toLowerCase();
+                    const districtLabel = rep.district === 'At-Large' ? 'At-Large' : `District ${rep.district}`;
+                    const photoHtml = rep.photoUrl ? 
+                        `<img src="${rep.photoUrl}" alt="${rep.name}" class="rep-photo">` :
+                        `<div class="rep-photo"></div>`;
+                    
+                    html += `
+                        <div class="rep-item ${partyClass}">
+                            ${photoHtml}
+                            <div class="rep-info">
+                                <div class="rep-name">${rep.name}</div>
+                                <div class="rep-details">${rep.party} • ${districtLabel} • ${rep.billCount} bills</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `</div></div>`;
+            
+            panel.innerHTML = html;
+        }
+
+        function getStateAbbr(name) {
+            const abbrs = {
+                "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR",
+                "California": "CA", "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE",
+                "Florida": "FL", "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID",
+                "Illinois": "IL", "Indiana": "IN", "Iowa": "IA", "Kansas": "KS",
+                "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+                "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS",
+                "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
+                "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
+                "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
+                "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+                "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT",
+                "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
+                "Wisconsin": "WI", "Wyoming": "WY"
+            };
+            return abbrs[name] || "";
+        }
+    </script>
+</body>
+</html>
