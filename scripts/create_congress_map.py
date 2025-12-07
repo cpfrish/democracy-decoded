@@ -392,14 +392,14 @@ html_template = """<!DOCTYPE html>
         const g = svg.append("g");
 
         const projection = d3.geoAlbersUsa()
-            .scale(width * 1.3)
+            .scale(width)
             .translate([width / 2, height / 2]);
 
         const path = d3.geoPath().projection(projection);
         
         // Zoom behavior
         const zoom = d3.zoom()
-            .scaleExtent([1, 8])
+            .scaleExtent([0.5, 8])
             .on("zoom", (event) => {{
                 g.attr("transform", event.transform);
             }});
