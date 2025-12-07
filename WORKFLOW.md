@@ -64,8 +64,8 @@ python 2_fetch_location_data.py
 # Step 3: Create visualizations (instant)
 python 3_create_visualizations.py
 
-# Step 4 (Optional): Fetch bill data & create tracker (~5-10 minutes)
-python scripts/congress_bill_fetcher_bulk.py
+# Step 4 (Optional): Fetch bill data & create tracker (~5m - 3hrs)
+python scripts/congress_bill_fetcher_bulk.py 
 python 4_create_bill_tracker.py
 ```
 
@@ -156,7 +156,7 @@ git add .
 git commit -m "Update visualizations"
 
 # Push
-git push origin dev_colin
+git push origin dev_colin / git push origin main 
 ```
 
 ## Helper Modules (scripts/)
