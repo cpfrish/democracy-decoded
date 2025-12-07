@@ -57,7 +57,8 @@ def load_congress_data():
                 "party": member['Party'],
                 "bioguideId": member['BioguideID'],
                 "photoUrl": member['PhotoURL'] if pd.notna(member['PhotoURL']) else '',
-                "billCount": int(member['BillCount']) if pd.notna(member['BillCount']) else 0
+                "billCount": int(member['BillCount']) if pd.notna(member['BillCount']) else 0,
+                "congressUrl": f"https://www.congress.gov/member/{member['Name'].split()[0]}-{member['Name'].split()[-1]}/{member['BioguideID']}" if pd.notna(member['BioguideID']) else ''
             }
             
             if member['Chamber'] == 'Senate':
@@ -201,6 +202,10 @@ html_template = """<!DOCTYPE html>
         .state.selected {{
             fill: #3949ab;
         }}
+
+        .territory rect.selected {{
+            fill: #3949ab;
+        }}
         
         #info-panel {{
             margin-top: 30px;
@@ -275,6 +280,17 @@ html_template = """<!DOCTYPE html>
             color: #1a1a2e;
             margin-bottom: 4px;
         }}
+
+        .rep-name a {{
+            color: #1a1a2e;
+            text-decoration: none;
+            transition: color 0.2s;
+        }}
+
+        .rep-name a:hover {{
+            color: #5c6bc0;
+            text-decoration: underline;
+        }}
         
         .rep-details {{
             font-size: 14px;
@@ -313,6 +329,15 @@ html_template = """<!DOCTYPE html>
             text-align: center;
             font-size: 12px;
             color: #999;
+        }}
+
+        .data-info a {{
+            color: #999;
+            text-decoration: none;
+        }}
+
+        .data-info a:hover {{
+            text-decoration: underline;
         }}
     </style>
 </head>
@@ -372,7 +397,8 @@ html_template = """<!DOCTYPE html>
         </div>
         
         <div class="data-info">
-            Data from Congress.gov API
+            Data from Congress.gov API • 
+            <a href="https://www.congress.gov/help/linking-to-congress-gov" target="_blank" rel="noopener noreferrer">Learn more about Congress.gov here</a>
         </div>
     </div>
 
@@ -444,6 +470,8 @@ html_template = """<!DOCTYPE html>
                 .attr("d", path)
                 .on("click", function(event, d) {{
                     g.selectAll(".state").classed("selected", false);
+                    g.selectAll(".territory rect").classed("selected", false);
+                    g.selectAll(".territory rect").attr("fill", "#e8eaf6");
                     d3.select(this).classed("selected", true);
                     currentState = d.properties.name;
                     showStateInfo(d.properties.name);
@@ -462,6 +490,57 @@ html_template = """<!DOCTYPE html>
                     const abbr = getStateAbbr(d.properties.name);
                     return abbr;
                 }});
+        }});
+
+        const territories = [
+            {{ name: "Puerto Rico", x: width - 160, y: height - 180, abbr: "PR" }},
+            {{ name: "District of Columbia", x: width - 160, y: height - 150, abbr: "DC" }},
+            {{ name: "Guam", x: width - 160, y: height - 120, abbr: "GU" }},
+            {{ name: "Virgin Islands", x: width - 160, y: height - 90, abbr: "VI" }},
+            {{ name: "American Samoa", x: width - 160, y: height - 60, abbr: "AS" }},
+            {{ name: "Northern Mariana Islands", x: width - 160, y: height - 30, abbr: "MP" }}
+        ];
+
+        territories.forEach(territory => {{
+            const territoryGroup = g.append("g")
+                .attr("class", "territory")
+                .attr("transform", `translate(${{territory.x}},${{territory.y}})`);
+            
+            territoryGroup.append("rect")
+                .attr("width", 150)
+                .attr("height", 25)
+                .attr("rx", 4)
+                .attr("fill", "#e8eaf6")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1.5)
+                .attr("cursor", "pointer")
+                .on("click", function() {{
+                    g.selectAll(".state").classed("selected", false);
+                    g.selectAll(".territory rect").classed("selected", false);
+                    g.selectAll(".territory rect").attr("fill", "#e8eaf6");
+                    d3.select(this).classed("selected", true);
+                    currentState = territory.name;
+                    showStateInfo(territory.name);
+                }})
+                .on("mouseover", function() {{
+                    if (!d3.select(this).classed("selected")) {{
+                        d3.select(this).attr("fill", "#5c6bc0");
+                    }}
+                }})
+                .on("mouseout", function() {{
+                    if (!d3.select(this).classed("selected")) {{
+                        d3.select(this).attr("fill", "#e8eaf6");
+                    }}
+                }});
+            
+            territoryGroup.append("text")
+                .attr("x", 75)
+                .attr("y", 16)
+                .attr("text-anchor", "middle")
+                .attr("font-size", "9px")
+                .attr("fill", "#666")
+                .attr("pointer-events", "none")
+                .text(territory.name + " (" + territory.abbr + ")");
         }});
 
         function filterMembers(members) {{
@@ -529,7 +608,9 @@ html_template = """<!DOCTYPE html>
                         <div class="rep-item ${{partyClass}}">
                             ${{photoHtml}}
                             <div class="rep-info">
-                                <div class="rep-name">${{senator.name}}</div>
+                                <div class="rep-name">
+                                    <a href="${{senator.congressUrl}}" target="_blank" rel="noopener noreferrer">${{senator.name}}</a>
+                                </div>
                                 <div class="rep-details">${{senator.party}} • ${{senator.billCount}} bills</div>
                             </div>
                         </div>
@@ -561,7 +642,9 @@ html_template = """<!DOCTYPE html>
                         <div class="rep-item ${{partyClass}}">
                             ${{photoHtml}}
                             <div class="rep-info">
-                                <div class="rep-name">${{rep.name}}</div>
+                                <div class="rep-name">
+                                    <a href="${{rep.congressUrl}}" target="_blank" rel="noopener noreferrer">${{rep.name}}</a>
+                                </div>
                                 <div class="rep-details">${{rep.party}} • ${{districtLabel}} • ${{rep.billCount}} bills</div>
                             </div>
                         </div>
