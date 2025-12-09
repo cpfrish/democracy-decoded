@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Congress Bill Fetcher - Bulk Download
 Fetches bill metadata, summaries, and status tracking information from Congress.gov API
@@ -304,6 +303,13 @@ def fetch_bills_data_bulk(congress: int = 119, max_bills: Optional[int] = None) 
             actions_list = fetch_bill_actions(congress, bill_type, bill_number)
             actions_json = json.dumps(actions_list, ensure_ascii=False)
 
+            # Get policy area, with fallback to first subject if not available
+            policy_area = details.get("policyArea", {}).get("name", "")
+            if not policy_area:
+                subjects = details.get("subjects", {}).get("legislativeSubjects", [])
+                if subjects and len(subjects) > 0:
+                    policy_area = subjects[0].get("name", "")
+            
             # Build processed bill record
             processed_bill = {
                 "congress": congress,
@@ -316,14 +322,14 @@ def fetch_bills_data_bulk(congress: int = 119, max_bills: Optional[int] = None) 
                 "latest_action_text": details.get("latestAction", {}).get("text", ""),
                 "tracker_status": tracker_status,
                 "origin_chamber": details.get("originChamber", ""),
-                "policy_area": details.get("policyArea", {}).get("name", ""),
+                "policy_area": policy_area,
                 "sponsor": sponsor_name,
                 "sponsor_party": sponsor_party,   # NEW: match JS script
                 "sponsor_state": sponsor_state,   # NEW: match JS script
                 "cosponsors_count": details.get("cosponsors", {}).get("count", 0),
                 "congress_url": details.get("legislationUrl", ""),
                 "summary": "",  # still available if you want to hook up fetch_bill_summary()
-                "actions": actions_json           # NEW: full actions JSON string
+                "actions": actions_json           # full actions JSON string
             }
 
             processed_bills.append(processed_bill)
@@ -390,7 +396,7 @@ def main():
     print()
 
     # Fetch bills data (default: ALL bills for this Congress)
-    congress_list = [117,118,119]
+    #congress_list = [117,118,119] # Example for multiple congresses
     congress_list = [119]
     for congress in congress_list:
         bills_data = fetch_bills_data_bulk(congress=congress, max_bills=None)

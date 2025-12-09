@@ -10,7 +10,7 @@ import pandas as pd
 import json
 
 
-def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills.csv"):
+def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills_2.csv"):
     """
     Create interactive bill tracker visualization showing status breakdown.
     
@@ -28,14 +28,18 @@ def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills.c
     
     print(f"Loaded {len(df)} bills from {csv_path}")
     
+    # Fill empty policy areas with "Uncategorized"
+    df['policy_area'] = df['policy_area'].fillna('Uncategorized')
+    df['policy_area'] = df['policy_area'].replace('', 'Uncategorized')
+    
     # Calculate tracker status counts
     tracker_counts = df['tracker_status'].value_counts().to_dict()
     
     # Calculate by bill type
     bill_type_counts = df.groupby(['bill_type', 'tracker_status']).size().reset_index(name='count')
     
-    # Calculate by policy area (top 20)
-    policy_counts = df['policy_area'].value_counts().head(20).to_dict()
+    # Calculate by policy area (top 20, excluding Uncategorized)
+    policy_counts = df[df['policy_area'] != 'Uncategorized']['policy_area'].value_counts().head(20).to_dict()
     
     # Prepare data for visualization
     bills_json = df.to_json(orient='records')
@@ -283,8 +287,65 @@ def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills.c
             font-size: 14px;
         }}
         
-        tbody tr:hover {{
+        tbody tr.bill-row {{
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        
+        tbody tr.bill-row:hover {{
             background: #f8fafc;
+        }}
+        
+        tbody tr.bill-row.expanded {{
+            background: #eff6ff;
+        }}
+        
+        .expand-icon {{
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform 0.2s;
+            font-weight: bold;
+            color: #3b82f6;
+        }}
+        
+        .expanded .expand-icon {{
+            transform: rotate(90deg);
+        }}
+        
+        .expanded-content {{
+            display: none;
+            padding: 20px;
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            margin: 10px 15px;
+            border-radius: 6px;
+        }}
+        
+        .expanded-content.show {{
+            display: block;
+        }}
+        
+        .expanded-section {{
+            margin-bottom: 15px;
+        }}
+        
+        .expanded-section:last-child {{
+            margin-bottom: 0;
+        }}
+        
+        .expanded-label {{
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        
+        .expanded-text {{
+            color: #475569;
+            line-height: 1.6;
+            font-size: 14px;
         }}
         
         .status-badge {{
@@ -371,17 +432,11 @@ def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills.c
             border-radius: 6px;
         }}
         
-        .legend-item {{
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-        }}
-        
-        .legend-color {{
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
+        .truncated {{
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
         }}
     </style>
 </head>
@@ -474,7 +529,7 @@ def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills.c
             </div>
             
             <div class="chart-section">
-                <div class="chart-title">All Bills</div>
+                <div class="chart-title">All Bills <span style="font-size: 0.7em; color: #64748b; font-weight: normal;">(Click rows to expand)</span></div>
                 <div class="bills-table">
                     <div class="table-controls">
                         <label for="status-filter">Status:</label>
@@ -784,27 +839,78 @@ def create_bill_tracker_visualization(csv_path: str = "data/congress_119_bills.c
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
             
-            filteredData.slice(0, 100).forEach(bill => {{
-                const row = document.createElement('tr');
-                
+            filteredData.slice(0, 100).forEach((bill, index) => {{
                 const statusColor = statusColors[bill.tracker_status] || '#94a3b8';
+                const billId = `bill-${{index}}`;
+                
+                // Main row
+                const row = document.createElement('tr');
+                row.className = 'bill-row';
+                row.setAttribute('data-bill-id', billId);
                 
                 row.innerHTML = `
-                    <td><a href="${{bill.congress_url}}" target="_blank" class="bill-link">${{bill.bill_id}}</a></td>
-                    <td style="max-width: 300px;">${{bill.title.substring(0, 100)}}...</td>
+                    <td><span class="expand-icon">▶</span><a href="${{bill.congress_url}}" target="_blank" class="bill-link" onclick="event.stopPropagation()">${{bill.bill_id}}</a></td>
+                    <td><div class="truncated">${{bill.title}}</div></td>
                     <td><span class="status-badge" style="background: ${{statusColor}}; color: white;">${{bill.tracker_status}}</span></td>
                     <td>${{bill.sponsor || 'N/A'}}</td>
                     <td>${{bill.policy_area || 'N/A'}}</td>
-                    <td style="max-width: 250px; font-size: 12px;">${{bill.latest_action_text.substring(0, 80)}}...</td>
+                    <td><div class="truncated" style="max-width: 250px; font-size: 12px;">${{bill.latest_action_text}}</div></td>
                 `;
                 
+                row.addEventListener('click', function() {{
+                    toggleRow(billId);
+                }});
+                
                 tbody.appendChild(row);
+                
+                // Expanded content row
+                const expandedRow = document.createElement('tr');
+                expandedRow.setAttribute('data-expanded-for', billId);
+                expandedRow.style.display = 'none';
+                
+                expandedRow.innerHTML = `
+                    <td colspan="6">
+                        <div class="expanded-content" id="expanded-${{billId}}">
+                            <div class="expanded-section">
+                                <div class="expanded-label">Full Title</div>
+                                <div class="expanded-text">${{bill.title}}</div>
+                            </div>
+                            <div class="expanded-section">
+                                <div class="expanded-label">Latest Action</div>
+                                <div class="expanded-text">${{bill.latest_action_text}}</div>
+                            </div>
+                            <div class="expanded-section">
+                                <div class="expanded-label">Latest Action Date</div>
+                                <div class="expanded-text">${{bill.latest_action_date || 'N/A'}}</div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(expandedRow);
             }});
             
             if (filteredData.length > 100) {{
                 const row = document.createElement('tr');
                 row.innerHTML = `<td colspan="6" style="text-align: center; padding: 20px; color: #64748b;">Showing first 100 of ${{filteredData.length.toLocaleString()}} bills. Use filters to narrow results.</td>`;
                 tbody.appendChild(row);
+            }}
+        }}
+        
+        // Toggle row expansion
+        function toggleRow(billId) {{
+            const mainRow = document.querySelector(`tr[data-bill-id="${{billId}}"]`);
+            const expandedRow = document.querySelector(`tr[data-expanded-for="${{billId}}"]`);
+            const expandedContent = document.getElementById(`expanded-${{billId}}`);
+            
+            if (mainRow.classList.contains('expanded')) {{
+                mainRow.classList.remove('expanded');
+                expandedRow.style.display = 'none';
+                expandedContent.classList.remove('show');
+            }} else {{
+                mainRow.classList.add('expanded');
+                expandedRow.style.display = 'table-row';
+                expandedContent.classList.add('show');
             }}
         }}
         
