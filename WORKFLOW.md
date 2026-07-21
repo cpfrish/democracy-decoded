@@ -22,7 +22,7 @@ congress_project/
 │   ├── congress_members_with_photos.csv
 │   ├── congress_members_all_chambers.csv
 │   ├── congress_members_districts.csv
-│   └── congress_118_bills.csv
+│   └── congress_119_bills_2.csv
 │
 ├── visualizations/                # Generated HTML files
 │   ├── member_activity_scatter_interactive.html
@@ -99,7 +99,7 @@ python 4_create_bill_tracker.py
 - Determines tracker status (Introduced, Passed House/Senate, Became Law, etc.)
 - Creates interactive dashboard similar to congress.gov tracker
 - **Output**:
-  - `data/congress_118_bills.csv` (bill data with tracker status)
+  - `data/congress_119_bills_2.csv` (bill data with tracker status; filename is `congress_{congress}_bills_2.csv`)
   - `congress_bill_tracker.html` (interactive dashboard)
 
 ## Visualization Features
