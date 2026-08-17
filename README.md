@@ -2,6 +2,29 @@
 
 Interactive visualizations of the 119th US Congress, analyzing legislative activity by generation, party, and geography.
 
+![Generational dashboard](docs/img/generational_dashboard.png)
+
+## Findings & live demos
+
+- **Congress is still a Boomer/Gen X institution** — the two generations hold ~440 of 535 seats; Millennials (~73) and Gen Z (single digits) remain a small minority.
+- **The Silent Generation punches far above its weight in output**, sponsoring the most bills per member (~570 avg) of any generation.
+- **Topic focus shifts visibly by generation** — Gen Z's sponsored bills skew hardest toward Technology, while older cohorts spread across Economy/Finance and Healthcare.
+
+Every visualization is live — no cloning required:
+
+| Demo | Link |
+|---|---|
+| Generational dashboard | [view](https://colinfrishberg.com/democracy-decoded/visualizations/congress_generational_dashboard.html) |
+| District map | [view](https://colinfrishberg.com/democracy-decoded/visualizations/congress_district_map.html) |
+| Dual-chamber state map | [view](https://colinfrishberg.com/democracy-decoded/visualizations/congress_state_map_dual_chamber.html) |
+| Bill tracker | [view](https://colinfrishberg.com/democracy-decoded/visualizations/congress_bill_tracker.html) |
+| Party-loyalty ranking | [view](https://colinfrishberg.com/democracy-decoded/visualizations/congress_loyalty_rank.html) |
+| Loyalty distribution | [view](https://colinfrishberg.com/democracy-decoded/visualizations/loyalty_distribution.html) |
+| Topic heatmap | [view](https://colinfrishberg.com/democracy-decoded/visualizations/topic_heatmap.html) |
+| Member activity scatter (interactive) | [view](https://colinfrishberg.com/democracy-decoded/visualizations/member_activity_scatter_interactive.html) |
+
+(Plus five more in [`visualizations/`](visualizations/).)
+
 ## Quick Start
 
 ### Prerequisites
@@ -14,8 +37,8 @@ Interactive visualizations of the 119th US Congress, analyzing legislative activ
 1. **Clone the repository**
 ```bash
 
-git clone https://github.com/UC-Berkeley-I-School/final-project-209-congress.git
-cd final-project-209-congress
+git clone https://github.com/cpfrish/democracy-decoded.git
+cd democracy-decoded
 ```
 
 2. **Install dependencies**
